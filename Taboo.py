@@ -282,26 +282,26 @@ async def Help_Handler(update: Update, context):
     
     Guide += "📍 Match Setup Commands\n\n"
     
-    Guide += "1️⃣ /Lobby Use This To Create A New Game Room For Your Friends\n"
-    Guide += "2️⃣ /Join Type This To Enter The Active Game Lobby\n"
-    Guide += "3️⃣ /Start The Host Can Use This To Begin The Match After Everyone Joins\n"
-    Guide += "4️⃣ /Members Check The List Of All Players Currently In The Lobby\n"
-    Guide += "5️⃣ /Cancel Stop The Ongoing Match Immediately If Needed\n"
-    Guide += "6️⃣ /Reset Fully Clear All Data And Start Everything From Zero\n\n"
+    Guide += "1️⃣ /lobby Use This To Create A New Game Room For Your Friends\n"
+    Guide += "2️⃣ /register Type This To Enter The Active Game Lobby\n"
+    Guide += "3️⃣ /start The Host Can Use This To Begin The Match After Everyone Joins\n"
+    Guide += "4️⃣ /members Check The List Of All Players Currently In The Lobby\n"
+    Guide += "5️⃣ /cancel Stop The Ongoing Match Immediately If Needed\n"
+    Guide += "6️⃣ /reset Fully Clear All Data And Start Everything From Zero\n\n"
     
     Guide += "📍 Match Play Commands\n\n"
     
-    Guide += "7️⃣ /Round Get Your New Secret Word Inside Your Private DM\n"
-    Guide += "8️⃣ /Clue The Clue Giver Must Send Hints To The Bot DM Using This\n"
-    Guide += "9️⃣ /Hint Get A Small Clue If The Word Is Too Hard To Guess\n"
-    Guide += "🔟 /Turn Find Out If It Is The Turn Of Team Bjp Or Team Congress\n"
-    Guide += "🔢 /Team See Who Is In Team Bjp And Who Is In Team Congress\n"
-    Guide += "📊 /Status Check The Live Score To See Which Team Is Winning\n\n"
+    Guide += "7️⃣ /round Get Your New Secret Word Inside Your Private DM\n"
+    Guide += "8️⃣ /clue The Clue Giver Must Send Hints To The Bot DM Using This\n"
+   # Guide += "9️⃣ /hint Get A Small Clue If The Word Is Too Hard To Guess\n"
+    Guide += "9️⃣ /turn Find Out If It Is The Turn Of Team Bjp Or Team Congress\n"
+    Guide += "🔟 /squad See Who Is In Team Bjp And Who Is In Team Congress\n"
+    Guide += "📊 /status Check The Live Score To See Which Team Is Winning\n\n"
     
     Guide += "📍 Your Records\n\n"
     
-    Guide += "👤 /Profile View Your Personal Points And Total Game Wins\n"
-    Guide += "🏆 /Leaderboard See The Top Ranked Players On The Global Board\n\n"
+    Guide += "👤 /profile View Your Personal Points And Total Game Wins\n"
+    Guide += "🏆 /leaderboard See The Top Ranked Players On The Global Board\n\n"
     
     Guide += "📝 Important Rules For New Players\n"
     Guide += "The Clue Giver Must Start The Bot In Private DM First\n"
@@ -344,8 +344,9 @@ async def Lobby_Handler(update: Update, context):
     Invite += "📊 Status Waiting For Players To Join The Session\n\n"
     
     Invite += "📝 How To Join The Game Below\n\n"
-    Invite += "👉 Type /Join To Enter This Game Room Right Now\n"
-    Invite += "👉 Type /Start Once All Your Friends Are Ready\n"
+    Invite += "👉 Type /register To Enter This Game Room Right Now\n"
+    Invite += "👉 Type /start Once All Your Friends Are Ready\n"
+    Invite += "👉 Type /members To See All The Joined Players\n"
     Invite += "👉 Note You Need At Least Two Players To Start The Match\n\n"
     
     Invite += "🔥 Get Ready For A Fun Battle Of Words And Speed\n"
@@ -971,13 +972,113 @@ async def Cancel_Handler(update: Update, context):
     
     await update.message.reply_text(Termination_Msg)
 
+async def Broadcast(update: Update, context):
+    Allowed_Username = "bhawaniisinghshekhawat"
+    Current_User = update.effective_user.username
+    
+    # Check If The User Is The Bot Owner
+    if not Current_User or Current_User.lower() != Allowed_Username.lower():
+        Denied_Msg = "🚫 Access Denied Only The Bot Owner Can Use This Command 🚫\n\n"
+        Denied_Msg += "This Is A Restricted Command For Security Reasons\n"
+        Denied_Msg += "Your Attempt Has Been Logged In The System"
+        return await update.message.reply_text(Denied_Msg)
+      
+    # Check If Message Content Is Provided
+    if not context.args:
+        Usage_Msg = "📝 How To Use Broadcast Command 📝\n\n"
+        Usage_Msg += "Format Type /Broadcast Your Message Here\n"
+        Usage_Msg += "Note Use /n If You Want To Start A New Line\n"
+        Usage_Msg += "Example /Broadcast Hello Everyone /n This Is A New Game Update"
+        return await update.message.reply_text(Usage_Msg)
+      
+    Raw_Msg = " ".join(context.args)
+    Formatted_Msg = Raw_Msg.replace("/n", "\n")
+    
+    # Save Message Temporarily
+    context.user_data['Pending_Broadcast'] = Formatted_Msg
+    
+    # Get All Chat Ids From Database And Active Games
+    try:
+        Broadcast_Data = Collection.find_one({"_id": "Broadcast_List"})
+    except:
+        Broadcast_Data = None
+    
+    Total_Chats = list(Broadcast_Data["Chat_Ids"]) if Broadcast_Data and "Chat_Ids" in Broadcast_Data else []
+    
+    # Add Active Groups From Your Game State
+    for Cid in list(Game_State.keys()):
+        if Cid not in Total_Chats: Total_Chats.append(Cid)
+
+    if not Total_Chats:
+        return await update.message.reply_text("🚨 Error No Active Groups Found To Send The Message")
+      
+    # Create Simple Selection Buttons
+    Keyboard = []
+    Keyboard.append([InlineKeyboardButton("🚀 Send To All Groups", callback_data="bc_all")])
+    
+    for Chat_Id in Total_Chats:
+        try:
+            # Try To Get The Group Name
+            Chat_Info = await context.bot.get_chat(Chat_Id)
+            Title = Chat_Info.title if Chat_Info.title else "Group ID " + str(Chat_Id)
+            Keyboard.append([InlineKeyboardButton("📡 " + Title, callback_data="bc_" + str(Chat_Id))])
+        except:
+            continue
+
+    Reply_Markup = InlineKeyboardMarkup(Keyboard)
+    await update.message.reply_text(
+        "🎯 Select Target Destination 🎯\n\n"
+        "Please Choose Where You Want To Send Your Broadcast Message",
+        reply_markup=Reply_Markup
+    )
+
+async def Broadcast_Callback(update: Update, context):
+    Query = update.callback_query
+    await Query.answer()
+    
+    Data = Query.data
+    Msg_To_Send = context.user_data.get('Pending_Broadcast')
+    
+    if not Msg_To_Send:
+        return await Query.edit_message_text("❌ Error The Broadcast Message Has Expired Please Try Again")
+      
+    Targets = []
+    if Data == "bc_all":
+        try: 
+            Broadcast_Data = Collection.find_one({"_id": "Broadcast_List"})
+        except: 
+            Broadcast_Data = None
+        Targets = list(Broadcast_Data["Chat_Ids"]) if Broadcast_Data and "Chat_Ids" in Broadcast_Data else []
+        for Cid in list(Game_State.keys()):
+            if Cid not in Targets: Targets.append(Cid)
+    else:
+        Chat_Id = Data.replace("bc_", "")
+        Targets = [Chat_Id]
+
+    Success_Count = 0
+    for Tid in Targets:
+        try:
+            # Avoid Sending To The Storage Document ID
+            if Tid == "Broadcast_List": continue
+            await context.bot.send_message(chat_id=Tid, text=Msg_To_Send)
+            Success_Count += 1
+        except: 
+            continue
+      
+    Final_Report = "✅ Broadcast Process Complete Successfully ✅\n\n"
+    Final_Report += "🚀 Message Delivered To " + str(Success_Count) + " Groups\n"
+    Final_Report += "📊 Status All Signals Have Been Sent Successfully\n\n"
+    Final_Report += "⚡ System Link Is Now Disconnected"
+    
+    await Query.edit_message_text(Final_Report)
+
 def main():
     Token_Val = "8380924465:AAFwbA-55qfkrA0-QJ_AL2uWuuS3Pt7y-Mw"
     Application = ApplicationBuilder().token(Token_Val).connect_timeout(40).read_timeout(40).write_timeout(40).pool_timeout(40).build()
     
     Application.add_handler(CommandHandler("help", Help_Handler))
     Application.add_handler(CommandHandler("lobby", Lobby_Handler))
-    Application.add_handler(CommandHandler("join", Join_Handler))
+    Application.add_handler(CommandHandler("register", Join_Handler))
     Application.add_handler(CommandHandler("start", Start_Handler))
     Application.add_handler(CommandHandler("round", Next_Round_Handler))
     Application.add_handler(CommandHandler("cancel", Cancel_Handler))
@@ -986,12 +1087,14 @@ def main():
     Application.add_handler(CommandHandler("leaderboard", Leaderboard_Handler))
     Application.add_handler(CommandHandler("reset", Reset_Handler))
     Application.add_handler(CommandHandler("clue", Clue_Submit_Handler))
-    Application.add_handler(CommandHandler("rule", Rules_Handler))
+    Application.add_handler(CommandHandler("rules", Rules_Handler))
     Application.add_handler(CommandHandler("members", Members_Handler))
-    Application.add_handler(CommandHandler("team", Team_Handler))
-    Application.add_handler(CommandHandler("hint", Hint_Handler))
+    Application.add_handler(CommandHandler("squad", Team_Handler))
+    # Application.add_handler(CommandHandler("hint", Hint_Handler))
     Application.add_handler(CommandHandler("turn", Turn_Handler))
     Application.add_handler(CommandHandler("guide", Guide_Handler))
+    Application.add_handler(CommandHandler("broadcast", Broadcast))
+    Application.add_handler(CallbackQueryHandler(Broadcast_Callback, pattern="^bc_"))
     Application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), Referee_Logic))
     
     print("Taboo Professional Engine Is Live ✨")
