@@ -791,6 +791,72 @@ async def Status_Handler(update: Update, context):
     
     await update.message.reply_text(Status_Report)
 
+async def Guide_Handler(update: Update, context):
+    Guide_Text = "📖 Professional Taboo Gaming Guide For Beginners And New Players 📖\n\n"
+    
+    Guide_Text += "Agar Aap Is Game Mein Naye Hain Toh Yeh Guide Aapko Master Bana Degi\n\n"
+    
+    Guide_Text += "📍 Step 1 Game Kaise Join Karein\n"
+    Guide_Text += "Sabse Pehle Bot Ke Username Par Click Karke Use Private Mein Start Button Dabayein\n"
+    Guide_Text += "Uske Baad Group Mein Aakar Join Likhein Taaki Aap Match Ka Hissa Ban Sakein\n"
+    Guide_Text += "Jab Tak Teams Barabar Nahi Hongi Tab Tak Game Shuru Nahi Hoga Isliye Doston Ko Bulayein\n\n"
+    
+    Guide_Text += "📍 Step 2 Clue Giver Ka Kaam Kya Hai\n"
+    Guide_Text += "Har Round Mein Ek Player Ko Word Batane Wala Matlab Clue Giver Banaya Jayega\n"
+    Guide_Text += "Bot Aapko Private Message Mein Ek Secret Word Aur Panch Mana Kiye Gaye Words Bhejega\n"
+    Guide_Text += "Aapko Woh Secret Word Apni Team Ko Samjhana Hai Lekin Woh Panch Words Use Nahi Karne Hain\n"
+    Guide_Text += "Hint Dene Ke Liye Bot Ke DM Mein Clue Aur Apna Message Likhein Jaise Clue Yeh Peela Phal Hai\n\n"
+    
+    Guide_Text += "📍 Step 3 Guess Kaise Karna Hai\n"
+    Guide_Text += "Baaki Saare Players Ko Group Chat Mein Sirf Woh Word Type Karna Hai Jo Unhe Lagta Hai Sahi Hai\n"
+    Guide_Text += "Aapko Koi Command Use Nahi Karni Hai Bas Direct Word Likhein Jaise Mango Ya Apple\n"
+    Guide_Text += "Jo Sabse Pehle Sahi Word Likhega Uski Team Ko Das Points Mil Jayenge\n\n"
+    
+    Guide_Text += "📍 Step 4 Galatiyon Se Kaise Bachein\n"
+    Guide_Text += "Clue Giver Ko Kabhi Bhi Group Chat Mein Hint Nahi Likhna Hai Hamesha Bot Ke DM Mein Likhein\n"
+    Guide_Text += "Agar Clue Giver Ne Mana Kiye Gaye Words Bole Toh Round Turant Khatam Ho Jayega\n"
+    Guide_Text += "Hamesha Timer Par Nazar Rakhein Kyunki Do Minute Baad Round Apne Aap Band Ho Jayega\n\n"
+    
+    Guide_Text += "📍 Example Uddahran Ke Liye\n"
+    Guide_Text += "Secret Word Samosa Hai Aur Taboo Word Aloo Hai\n"
+    Guide_Text += "Aap DM Mein Likhenge Clue Yeh Ek Tikona Nashta Hai Jo Fry Hota Hai\n"
+    Guide_Text += "Aap Aloo Word Use Nahi Kar Sakte Warna Penalty Lag Jayegi\n\n"
+    
+    Guide_Text += "🌟 Bas Itna Hi Hai Ab Khelna Shuru Karein Aur Points Jeetein 🌟"
+    
+    await update.message.reply_text(Guide_Text)
+
+async def Rules_Handler(update: Update, context):
+    Summary = "🎮 Welcome To The Ultimate Professional Taboo Game Comprehensive Guide 🎮\n\n"
+    
+    Summary += "This Game Is A Thrilling Battle Of Words Intelligence And Quick Thinking Between Two Competitive Teams\n\n"
+    
+    Summary += "📍 Phase One Creating The Lobby And Forming Teams\n"
+    Summary += "First One Player Must Create A Lobby Using The Lobby Command Inside The Group Chat\n"
+    Summary += "Other Interested Participants Must Join The Session By Using The Join Command To Register Themselves\n"
+    Summary += "The Host Will Start The Match Once Teams Are Balanced Equally Into Team Alpha And Team Bravo\n\n"
+    
+    Summary += "📍 Phase Two The Secret Word And Clue Submission\n"
+    Summary += "Every Round One Player Is Nominated As The Official Clue Giver For Their Respective Team\n"
+    Summary += "The Bot Will Send A Secret Word Along With Five Restricted Taboo Words To Their Private DM\n"
+    Summary += "The Clue Giver Must Describe The Secret Word Without Using Any Of Those Forbidden Taboo Words\n"
+    Summary += "Important Note Clues Must Be Submitted Only In The Bot Private DM Using The Clue Command\n\n"
+    
+    Summary += "📍 Phase Three Guessing And Scoring Points\n"
+    Summary += "Once The Clue Is Forwarded To The Group Chat All Other Members Must Start Guessing The Word\n"
+    Summary += "Participants Should Type Their Guesses Directly Into The Group Chat Without Using Any Commands\n"
+    Summary += "The First Person To Type The Correct Secret Word Wins Ten Points For Their Team Immediately\n"
+    Summary += "If The Clue Giver Accidentally Mentions A Taboo Word The Turn Ends And No Points Are Awarded\n\n"
+    
+    Summary += "📍 Phase Four The Professional Timer And Victory\n"
+    Summary += "Each Round Features A One Hundred Twenty Second Professional Timer With Multiple Warning Alerts\n"
+    Summary += "If No One Guesses The Correct Word Within The Time Limit The Round Ends And The Turn Shifts\n"
+    Summary += "Players Can Track Their Performance Records Using The Profile And Global Leaderboard Commands\n\n"
+    
+    Summary += "🌟 Follow These Professional Rules To Maintain Fair Competition And Become A Grand Champion 🌟"
+    
+    await update.message.reply_text(Summary)
+
 def main():
     Token_Val = "8380924465:AAFwbA-55qfkrA0-QJ_AL2uWuuS3Pt7y-Mw"
     Application = ApplicationBuilder().token(Token_Val).connect_timeout(40).read_timeout(40).write_timeout(40).pool_timeout(40).build()
@@ -805,6 +871,8 @@ def main():
     Application.add_handler(CommandHandler("leaderboard", Leaderboard_Handler))
     Application.add_handler(CommandHandler("reset", Reset_Handler))
     Application.add_handler(CommandHandler("clue", Clue_Submit_Handler))
+    Application.add_handler(CommandHandler("rule", Rules_Handler))
+    Application.add_handler(CommandHandler("guide", Guide_Handler))
     Application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), Referee_Logic))
     
     print("Taboo Professional Engine Is Live ✨")
