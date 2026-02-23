@@ -3,7 +3,6 @@ import sqlite3
 import random
 import asyncio
 import logging
-from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, 
@@ -14,6 +13,10 @@ from telegram.ext import (
     CallbackQueryHandler
 )
 
+# Logging Setup For Tracking
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# Global State Management
 Lobby_Data = {
     "Is_Open": False,
     "Creator_Id": None,
@@ -27,447 +30,430 @@ Game_State = {
     "Team_B": [],
     "Scores": {"A": 0, "B": 0},
     "Current_Turn_Team": "A",
-    "History": []
+    "Current_Word": None,
+    "Taboo_Words": [],
+    "Clue_Giver": None,
+    "Category": "General",
+    "Round_Active": False
 }
 
-def Initialize_Database():
-    Conn = sqlite3.connect('Taboo_Data.db', check_same_thread=False)
-    Cursor = Conn.cursor()
+# Database Core Functions
+Conn = sqlite3.connect('Taboo_Master.db', check_same_thread=False)
+Cursor = Conn.cursor()
+
+def Initialize_System():
     Cursor.execute('''Create Table If Not Exists Players 
-                    (User_Id Integer Primary Key, Name Text, Points Integer Default 0, Wins Integer Default 0)''')
+                    (User_Id Integer Primary Key, Name Text, Points Integer Default 0, Wins Integer Default 0, Games_Played Integer Default 0)''')
     Conn.commit()
-    return Conn, Cursor
 
-Db_Conn, Db_Cursor = Initialize_Database()
+Initialize_System()
 
-def Update_Player_Stats(user_id, name, points_earned):
-    Db_Cursor.execute("Select User_Id From Players Where User_Id = ?", (user_id,))
-    Data = Db_Cursor.fetchone()
-    
-    if not Data:
-        Db_Cursor.execute("Insert Into Players (User_Id, Name, Points) Values (?, ?, ?)", (user_id, name, points_earned))
+def Update_Stats(user_id, name, pts=0, win=0):
+    Cursor.execute("Select User_Id From Players Where User_Id = ?", (user_id,))
+    if not Cursor.fetchone():
+        Cursor.execute("Insert Into Players (User_Id, Name, Points, Wins, Games_Played) Values (?, ?, ?, ?, 1)", (user_id, name, pts, win))
     else:
-        Db_Cursor.execute("Update Players Set Points = Points + ? Where User_Id = ?", (points_earned, user_id))
-    Db_Conn.commit()
+        Cursor.execute("Update Players Set Points = Points + ?, Wins = Wins + ?, Games_Played = Games_Played + 1 Where User_Id = ?", (pts, win, user_id))
+    Conn.commit()
 
-Category_Words = {
-    "Bollywood": [
-        {"Word": "Sholay", "Taboo": ["Gabbar", "Basanti", "Amitabh", "Movie", "Thakur"]},
-        {"Word": "Dangal", "Taboo": ["Aamir", "Wrestling", "Geeta", "Babita", "Movie"]},
-        {"Word": "Lagaan", "Taboo": ["Cricket", "Aamir", "Tax", "British", "Village"]},
-        {"Word": "Tiger", "Taboo": ["Salman", "Zoya", "Spy", "Katrina", "Movie"]},
-        {"Word": "Kabir Singh", "Taboo": ["Shahid", "Doctor", "Preeti", "Angry", "Arjun Reddy"]},
-        {"Word": "Pushpa", "Taboo": ["Allu", "Red", "Sandalwood", "Jhukega", "Flower"]},
-        {"Word": "Pathaan", "Taboo": ["Shah Rukh", "Deepika", "John", "Spy", "Besharam"]},
-        {"Word": "Jawan", "Taboo": ["SRK", "Double Role", "Metre", "Azad", "Vikram"]},
-        {"Word": "Animal", "Taboo": ["Ranbir", "Bobby", "Papa", "Rashmika", "Violent"]},
-        {"Word": "Gadar", "Taboo": ["Sunny", "Pakistan", "Handpump", "Tara Singh", "Amisha"]},
-        {"Word": "Baahubali", "Taboo": ["Prabhas", "Katappa", "Mahishmati", "Waterfall", "Sword"]},
-        {"Word": "PK", "Taboo": ["Alien", "Aamir", "Radio", "Godman", "Yellow"]},
-        {"Word": "Brahmastra", "Taboo": ["Ranbir", "Alia", "Shiva", "Isha", "Astras"]},
-        {"Word": "3 Idiots", "Taboo": ["College", "Aamir", "Rancho", "Engineering", "Virus"]}
-    ],
-    "Cricket": [
-        {"Word": "Kohli", "Taboo": ["King", "Anushka", "Bat", "Century", "India"]},
-        {"Word": "Dhoni", "Taboo": ["Captain", "Mahi", "7", "Keeper", "Chennai"]},
-        {"Word": "Sixer", "Taboo": ["Bat", "Boundary", "Ball", "Over", "Gayle"]},
-        {"Word": "Umpire", "Taboo": ["Out", "Finger", "Decision", "Ground", "Review"]},
-        {"Word": "IPL", "Taboo": ["T20", "League", "Money", "Teams", "BCCI"]},
-        {"Word": "Rohit", "Taboo": ["Hitman", "Mumbai", "Captain", "Vadapav", "Sharma"]},
-        {"Word": "Stadium", "Taboo": ["Ground", "Pitch", "Match", "Crowd", "Tickets"]},
-        {"Word": "World Cup", "Taboo": ["Odi", "Trophy", "India", "Final", "Tournament"]},
-        {"Word": "Free Hit", "Taboo": ["No Ball", "Swing", "Bat", "Run", "Over"]},
-        {"Word": "Stumping", "Taboo": ["Dhoni", "Keeper", "Bails", "Line", "Out"]},
-        {"Word": "Century", "Taboo": ["100", "Runs", "Bat", "Celebration", "Ton"]},
-        {"Word": "Hardik", "Taboo": ["Pandya", "Allrounder", "Mumbai", "Gujarat", "Kung Fu"]},
-        {"Word": "Bowling", "Taboo": ["Fast", "Spin", "Over", "Wicket", "Ball"]},
-        {"Word": "Catch", "Taboo": ["Hands", "Out", "Fielder", "Boundary", "Drop"]}
-    ],
-    "General": [
-        {"Word": "Samosa", "Taboo": ["Aloo", "Chutney", "Snack", "Fried", "Tea"]},
-        {"Word": "Mobile", "Taboo": ["Phone", "Call", "Screen", "App", "Battery"]},
-        {"Word": "School", "Taboo": ["Teacher", "Student", "Book", "Class", "Study"]},
-        {"Word": "Internet", "Taboo": ["Wifi", "Google", "Data", "Online", "Website"]},
-        {"Word": "Zomato", "Taboo": ["Food", "Delivery", "App", "Order", "Restaurant"]},
-        {"Word": "Metro", "Taboo": ["Train", "Token", "Delhi", "Card", "Travel"]},
-        {"Word": "Instagram", "Taboo": ["Reels", "Post", "Story", "Like", "Follow"]},
-        {"Word": "WhatsApp", "Taboo": ["Message", "Status", "Chat", "Blue Tick", "Group"]},
-        {"Word": "Youtube", "Taboo": ["Video", "Channel", "Subscribe", "Vlog", "Content"]},
-        {"Word": "Chai", "Taboo": ["Tea", "Milk", "Sugar", "Biscuit", "Cup"]},
-        {"Word": "Maggi", "Taboo": ["Noodles", "2 Minutes", "Masala", "Hostel", "Hungry"]},
-        {"Word": "Helmet", "Taboo": ["Bike", "Safety", "Police", "Challan", "Head"]},
-        {"Word": "Aeroplane", "Taboo": ["Fly", "Sky", "Pilot", "Airport", "Flight"]},
-        {"Word": "Laptop", "Taboo": ["Computer", "Office", "Keyboard", "Work", "Dell"]}
-    ]
-}
+# Massive Word Database
+Word_Library = [
+    {"Word": "Samosa", "Taboo": ["Aloo", "Chutney", "Snack", "Fried", "Tea"]},
+    {"Word": "Cricket", "Taboo": ["Bat", "Ball", "Dhoni", "Kohli", "Wicket"]},
+    {"Word": "Mobile", "Taboo": ["Phone", "Call", "Screen", "App", "Battery"]},
+    {"Word": "Salman", "Taboo": ["Bhai", "Tiger", "Actor", "Bollywood", "Six-Pack"]},
+    {"Word": "Internet", "Taboo": ["Wifi", "Google", "Data", "Online", "Website"]},
+    {"Word": "Biryani", "Taboo": ["Rice", "Chicken", "Food", "Dinner", "Spicy"]},
+    {"Word": "YouTube", "Taboo": ["Video", "Channel", "Subscribe", "Google", "Vlog"]},
+    {"Word": "Helmet", "Taboo": ["Bike", "Head", "Safety", "Police", "Ride"]},
+    {"Word": "Laptop", "Taboo": ["Computer", "Keyboard", "Work", "Dell", "Screen"]},
+    {"Word": "Cinema", "Taboo": ["Movie", "Theater", "Popcorn", "Ticket", "Screen"]},
+    {"Word": "Metro", "Taboo": ["Train", "Token", "Delhi", "Card", "Travel"]},
+    {"Word": "Maggi", "Taboo": ["Noodles", "2 Minutes", "Masala", "Snack", "Hungry"]},
+    {"Word": "Taj Mahal", "Taboo": ["Agra", "Love", "Shah Jahan", "Marble", "White"]},
+    {"Word": "Instagram", "Taboo": ["Reels", "Post", "Story", "Like", "Follow"]},
+    {"Word": "Chai", "Taboo": ["Tea", "Milk", "Sugar", "Cup", "Morning"]},
+    {"Word": "Train", "Taboo": ["Station", "Track", "Journey", "Ticket", "Berth"]},
+    {"Word": "Modi", "Taboo": ["PM", "India", "Leader", "BJP", "Gujarat"]},
+    {"Word": "Pizza", "Taboo": ["Cheese", "Dominos", "Italian", "Food", "Slice"]},
+    {"Word": "Joker", "Taboo": ["Cards", "Movie", "Batman", "Funny", "Circus"]},
+    {"Word": "Doctor", "Taboo": ["Hospital", "Medicine", "Patient", "Nurse", "Clinic"]},
+    {"Word": "WhatsApp", "Taboo": ["Chat", "Status", "Message", "Group", "Call"]},
+    {"Word": "Pubg", "Taboo": ["Game", "Mobile", "Winner", "Chicken Dinner", "Gun"]},
+    {"Word": "Ice Cream", "Taboo": ["Cold", "Cone", "Chocolate", "Sweet", "Milk"]},
+    {"Word": "Zomato", "Taboo": ["Food", "Delivery", "App", "Order", "Restaurant"]},
+    {"Word": "Netflix", "Taboo": ["Series", "Movies", "Watch", "Subscription", "Online"]},
+    {"Word": "Amazon", "Taboo": ["Delivery", "Shopping", "Jeff Bezos", "Prime", "Package"]},
+    {"Word": "Apple", "Taboo": ["iPhone", "Fruit", "Steve Jobs", "MacBook", "Red"]},
+    {"Word": "Google", "Taboo": ["Search", "Internet", "Browser", "Alphabet", "Answer"]},
+    {"Word": "Facebook", "Taboo": ["Mark Zuckerberg", "Meta", "Social Media", "Friends", "Blue"]},
+    {"Word": "Tesla", "Taboo": ["Elon Musk", "Electric", "Car", "Battery", "SpaceX"]},
+    {"Word": "Microsoft", "Taboo": ["Bill Gates", "Windows", "Office", "Computer", "Software"]},
+    {"Word": "Disney", "Taboo": ["Mickey Mouse", "Cartoons", "Movies", "World", "Land"]},
+    {"Word": "Nike", "Taboo": ["Shoes", "Just Do It", "Sports", "Brand", "Swoosh"]},
+    {"Word": "Adidas", "Taboo": ["Shoes", "Sports", "Three Stripes", "Brand", "German"]},
+    {"Word": "Starbucks", "Taboo": ["Coffee", "Cafe", "Green", "Drink", "Brew"]},
+    {"Word": "McDonalds", "Taboo": ["Burger", "Fries", "Fast Food", "Clown", "Golden Arches"]},
+    {"Word": "Coca Cola", "Taboo": ["Drink", "Soda", "Red", "Bottle", "Beverage"]},
+    {"Word": "Pepsi", "Taboo": ["Drink", "Soda", "Blue", "Bottle", "Beverage"]},
+    {"Word": "Toyota", "Taboo": ["Car", "Japan", "Vehicle", "Engine", "Drive"]},
+    {"Word": "Honda", "Taboo": ["Car", "Bike", "Japan", "Engine", "Drive"]},
+    {"Word": "Samsung", "Taboo": ["Mobile", "TV", "Korea", "Electronics", "Galaxy"]},
+    {"Word": "Sony", "Taboo": ["PlayStation", "TV", "Electronics", "Japan", "Camera"]},
+    {"Word": "Marvel", "Taboo": ["Avengers", "Comics", "Iron Man", "Superhero", "Movies"]},
+    {"Word": "Harry Potter", "Taboo": ["Magic", "Wizard", "Hogwarts", "Wand", "JK Rowling"]},
+    {"Word": "Star Wars", "Taboo": ["Jedi", "Space", "Luke Skywalker", "Darth Vader", "Force"]},
+    {"Word": "Batman", "Taboo": ["Joker", "Gotham", "Dark Knight", "DC", "Bruce Wayne"]},
+    {"Word": "Superman", "Taboo": ["Clark Kent", "Kryptonite", "DC", "Cape", "Fly"]},
+    {"Word": "Spider-Man", "Taboo": ["Peter Parker", "Marvel", "Web", "Spider", "Red"]},
+    {"Word": "Inception", "Taboo": ["Dream", "Christopher Nolan", "Leonardo DiCaprio", "Spinning Top", "Movie"]},
+    {"Word": "Titanic", "Taboo": ["Ship", "Iceberg", "Jack", "Rose", "Movie"]},
+    {"Word": "Jurassic Park", "Taboo": ["Dinosaur", "Steven Spielberg", "T-Rex", "Island", "Movie"]},
+    {"Word": "The Lion King", "Taboo": ["Simba", "Disney", "Hakuna Matata", "Mufasa", "Movie"]},
+    {"Word": "Toy Story", "Taboo": ["Woody", "Buzz Lightyear", "Disney", "Toys", "Movie"]},
+    {"Word": "Frozen", "Taboo": ["Elsa", "Anna", "Disney", "Olaf", "Snow"]},
+    {"Word": "The Avengers", "Taboo": ["Iron Man", "Captain America", "Thor", "Hulk", "Marvel"]},
+    {"Word": "Black Panther", "Taboo": ["Wakanda", "Marvel", "Chadwick Boseman", "Superhero", "Movie"]},
+    {"Word": "Wonder Woman", "Taboo": ["Gal Gadot", "DC", "Amazon", "Superhero", "Movie"]},
+    {"Word": "Shrek", "Taboo": ["Ogre", "Donkey", "Fiona", "Green", "Movie"]},
+    {"Word": "Minions", "Taboo": ["Yellow", "Despicable Me", "Gru", "Banana", "Movie"]},
+    {"Word": "Game of Thrones", "Taboo": ["Dragons", "Jon Snow", "Winter", "Throne", "Series"]},
+    {"Word": "Friends", "Taboo": ["Joey", "Rachel", "Chandler", "Coffee Shop", "Series"]},
+    {"Word": "Breaking Bad", "Taboo": ["Walter White", "Jesse Pinkman", "Chemistry", "Blue", "Series"]},
+    {"Word": "Stranger Things", "Taboo": ["Eleven", "Upside Down", "Demogorgon", "Netflix", "Series"]},
+    {"Word": "The Simpsons", "Taboo": ["Homer", "Bart", "Yellow", "Cartoon", "Series"]},
+    {"Word": "The Big Bang Theory", "Taboo": ["Sheldon", "Leonard", "Penny", "Science", "Series"]},
+    {"Word": "The Office", "Taboo": ["Michael Scott", "Dwight", "Jim", "Pam", "Series"]},
+    {"Word": "Sherlock", "Taboo": ["Benedict Cumberbatch", "Watson", "Detective", "London", "Series"]},
+    {"Word": "Doctor Who", "Taboo": ["TARDIS", "Time Travel", "The Doctor", "Daleks", "Series"]},
+    {"Word": "Pokemon", "Taboo": ["Pikachu", "Ash Ketchum", "Catch", "Nintendo", "Cards"]},
+    {"Word": "Super Mario", "Taboo": ["Nintendo", "Luigi", "Peach", "Bowser", "Video Game"]},
+    {"Word": "Legend of Zelda", "Taboo": ["Link", "Zelda", "Nintendo", "Master Sword", "Video Game"]},
+    {"Word": "Minecraft", "Taboo": ["Blocks", "Building", "Creeper", "Steve", "Video Game"]},
+    {"Word": "Fortnite", "Taboo": ["Battle Royale", "Building", "Emotes", "Epic Games", "Video Game"]},
+    {"Word": "Call of Duty", "Taboo": ["Shooting", "War", "Multiplayer", "Activision", "Video Game"]},
+    {"Word": "Grand Theft Auto", "Taboo": ["GTA", "Rockstar Games", "Car", "Crime", "Video Game"]},
+    {"Word": "FIFA", "Taboo": ["Football", "Video Game", "EA Sports", "Soccer", "Cards"]},
+    {"Word": "The Witcher", "Taboo": ["Geralt", "Monsters", "Magic", "Netflix", "Video Game"]},
+    {"Word": "Assassin's Creed", "Taboo": ["History", "Assassin", "Ubisoft", "Stealth", "Video Game"]},
+    {"Word": "Skyrim", "Taboo": ["Dragons", "Open World", "RPG", "Bethesda", "Video Game"]},
+    {"Word": "Final Fantasy", "Taboo": ["RPG", "Cloud Strife", "Square Enix", "Magic", "Video Game"]},
+    {"Word": "World of Warcraft", "Taboo": ["MMORPG", "Blizzard", "Horde", "Alliance", "Video Game"]},
+    {"Word": "Overwatch", "Taboo": ["Heroes", "Shooting", "Blizzard", "Multiplayer", "Video Game"]},
+    {"Word": "League of Legends", "Taboo": ["MOBA", "Riot Games", "Heroes", "Strategy", "Video Game"]},
+    {"Word": "Dota 2", "Taboo": ["MOBA", "Valve", "Heroes", "Strategy", "Video Game"]},
+    {"Word": "Counter-Strike", "Taboo": ["Shooting", "Valve", "Multiplayer", "War", "Video Game"]},
+    {"Word": "Pac-Man", "Taboo": ["Arcade", "Ghosts", "Eating", "Yellow", "Video Game"]},
+    {"Word": "Tetris", "Taboo": ["Blocks", "Puzzle", "Lines", "Russia", "Video Game"]},
+    {"Word": "Chess", "Taboo": ["Board Game", "King", "Queen", "Checkmate", "Strategy"]},
+    {"Word": "Monopoly", "Taboo": ["Board Game", "Money", "Property", "Hotel", "Dice"]},
+    {"Word": "Scrabble", "Taboo": ["Board Game", "Words", "Letters", "Points", "Tiles"]},
+    {"Word": "Catan", "Taboo": ["Board Game", "Resources", "Building", "Settlers", "Strategy"]},
+    {"Word": "Ticket to Ride", "Taboo": ["Board Game", "Trains", "Routes", "Travel", "Strategy"]},
+    {"Word": "Pandemic", "Taboo": ["Board Game", "Disease", "Cooperative", "Strategy", "Virus"]},
+    {"Word": "Risk", "Taboo": ["Board Game", "War", "Strategy", "World Domination", "Dice"]},
+    {"Word": "Clue", "Taboo": ["Board Game", "Murder", "Mystery", "Detective", "Mansion"]},
+    {"Word": "Uno", "Taboo": ["Card Game", "Numbers", "Colors", "Reverse", "Wild Card"]},
+    {"Word": "Poker", "Taboo": ["Card Game", "Gambling", "Chips", "Bluffing", "Strategy"]},
+    {"Word": "Bridge", "Taboo": ["Card Game", "Strategy", "Partnership", "Bidding", "Trick-taking"]},
+    {"Word": "Solitaire", "Taboo": ["Card Game", "Single Player", "Cards", "Patience", "Computer"]},
+    {"Word": "Rummy", "Taboo": ["Card Game", "Sets", "Runs", "Strategy", "Cards"]},
+    {"Word": "Blackjack", "Taboo": ["Card Game", "21", "Casino", "Gambling", "Strategy"]},
+    {"Word": "Baccarat", "Taboo": ["Card Game", "Casino", "Gambling", "Strategy", "James Bond"]},
+    {"Word": "Sudoku", "Taboo": ["Puzzle", "Numbers", "Grid", "Logic", "Math"]},
+    {"Word": "Crossword", "Taboo": ["Puzzle", "Words", "Clues", "Newspaper", "Letters"]},
+    {"Word": "Rubik's Cube", "Taboo": ["Puzzle", "Colors", "Cube", "Logic", "Twist"]},
+    {"Word": "Football", "Taboo": ["Soccer", "Ball", "Goal", "Pitch", "Sport"]},
+    {"Word": "Basketball", "Taboo": ["Hoop", "Ball", "Court", "Dunk", "Sport"]},
+    {"Word": "Tennis", "Taboo": ["Racket", "Ball", "Court", "Net", "Sport"]},
+    {"Word": "Golf", "Taboo": ["Club", "Ball", "Course", "Hole", "Sport"]},
+    {"Word": "Baseball", "Taboo": ["Bat", "Ball", "Field", "Home Run", "Sport"]},
+    {"Word": "Rugby", "Taboo": ["Ball", "Pitch", "Scrum", "Tackle", "Sport"]},
+    {"Word": "American Football", "Taboo": ["Ball", "Field", "Touchdown", "NFL", "Sport"]},
+    {"Word": "Hockey", "Taboo": ["Stick", "Puck", "Ice", "Goal", "Sport"]},
+    {"Word": "Volleyball", "Taboo": ["Ball", "Net", "Court", "Spike", "Sport"]},
+    {"Word": "Swimming", "Taboo": ["Water", "Pool", "Laps", "Race", "Sport"]},
+    {"Word": "Athletics", "Taboo": ["Running", "Track", "Field", "Race", "Sport"]},
+    {"Word": "Cycling", "Taboo": ["Bicycle", "Race", "Road", "Helmet", "Sport"]},
+    {"Word": "Boxing", "Taboo": ["Gloves", "Ring", "Punch", "Fight", "Sport"]},
+    {"Word": "Martial Arts", "Taboo": ["Karate", "Judo", "Fight", "Belt", "Sport"]},
+    {"Word": "Yoga", "Taboo": ["Stretching", "Meditation", "Exercise", "Mat", "Sport"]},
+    {"Word": "Gymnastics", "Taboo": ["Flip", "Floor", "Beam", "Vault", "Sport"]},
+    {"Word": "Skiing", "Taboo": ["Snow", "Mountain", "Skis", "Winter", "Sport"]},
+    {"Word": "Snowboarding", "Taboo": ["Snow", "Mountain", "Board", "Winter", "Sport"]},
+    {"Word": "Surfing", "Taboo": ["Water", "Ocean", "Waves", "Board", "Sport"]},
+    {"Word": "Sailing", "Taboo": ["Water", "Boat", "Wind", "Ocean", "Sport"]},
+    {"Word": "Mountain Climbing", "Taboo": ["Mountain", "Climbing", "Rope", "Peak", "Sport"]},
+    {"Word": "Hiking", "Taboo": ["Walking", "Mountain", "Trail", "Nature", "Sport"]},
+    {"Word": "Camping", "Taboo": ["Tent", "Nature", "Outdoors", "Fire", "Sleep"]},
+    {"Word": "Fishing", "Taboo": ["Water", "Fish", "Rod", "Hook", "Sport"]},
+    {"Word": "Hunting", "Taboo": ["Animals", "Gun", "Bow", "Wild", "Sport"]},
+    {"Word": "Gardening", "Taboo": ["Plants", "Flowers", "Yard", "Soil", "Growing"]},
+    {"Word": "Cooking", "Taboo": ["Food", "Kitchen", "Recipe", "Eating", "Chef"]},
+    {"Word": "Baking", "Taboo": ["Food", "Oven", "Recipe", "Cake", "Bread"]},
+    {"Word": "Painting", "Taboo": ["Art", "Artist", "Brush", "Canvas", "Color"]},
+    {"Word": "Drawing", "Taboo": ["Art", "Artist", "Pencil", "Paper", "Sketch"]},
+    {"Word": "Photography", "Taboo": ["Camera", "Photos", "Pictures", "Image", "Lens"]},
+    {"Word": "Music", "Taboo": ["Sound", "Song", "Instrument", "Listen", "Artist"]},
+    {"Word": "Singing", "Taboo": ["Voice", "Music", "Song", "Artist", "Mouth"]},
+    {"Word": "Dancing", "Taboo": ["Movement", "Music", "Rhythm", "Party", "Body"]},
+    {"Word": "Writing", "Taboo": ["Words", "Paper", "Pen", "Book", "Story"]},
+    {"Word": "Reading", "Taboo": ["Book", "Words", "Eyes", "Story", "Library"]},
+    {"Word": "Traveling", "Taboo": ["Trip", "Journey", "Vacation", "Airplane", "World"]},
+    {"Word": "Shopping", "Taboo": ["Store", "Buy", "Money", "Package", "Mall"]},
+    {"Word": "Movies", "Taboo": ["Cinema", "Film", "Watch", "Theater", "Popcorn"]},
+    {"Word": "Television", "Taboo": ["TV", "Watch", "Screen", "Series", "Shows"]},
+    {"Word": "Radio", "Taboo": ["Sound", "Music", "Listen", "Station", "Broadcasting"]},
+    {"Word": "Podcasts", "Taboo": ["Listen", "Sound", "Series", "Internet", "Talking"]},
+    {"Word": "Social Media", "Taboo": ["Internet", "Friends", "Post", "Like", "Follow"]},
+    {"Word": "Video Games", "Taboo": ["Play", "Screen", "Console", "Controller", "Fun"]},
+    {"Word": "Internet Browsing", "Taboo": ["Search", "Website", "Internet", "Browser", "Online"]},
+    {"Word": "Coding", "Taboo": ["Computer", "Programming", "Software", "Code", "Developer"]}
+]
 
-async def Set_Category(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    Buttons = [
-        [InlineKeyboardButton("Bollywood 🎭", callback_data="Cat_Bollywood"),
-         InlineKeyboardButton("Cricket 🏏", callback_data="Cat_Cricket")]
-    ]
-    await update.message.reply_text("Kripya Game Ki Category Chunein:", reply_markup=InlineKeyboardMarkup(Buttons))
-
-def Get_Match_Mvp():
-    if not Game_State["Round_Log"]:
-        return "Koi Nahi"
-    
-    Mvp_Id = max(Game_State["Round_Log"], key=Game_State["Round_Log"].get)
-    return Lobby_Data["Player_Names"].get(Mvp_Id, "Unknown")
-
-async def Create_Lobby(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    User = update.message.from_user
-    
-    if Lobby_Data["Is_Open"]:
-        await update.message.reply_text(f"Ek Lobby Pehle Se Bani Hui Hai ⚠️")
-        return
-
-    Lobby_Data["Is_Open"] = True
-    Lobby_Data["Creator_Id"] = User.id
-    Lobby_Data["Players"].append(User.id)
-    Lobby_Data["Player_Names"][User.id] = User.first_name
-    
-    Msg = f"🎮 Nayi Taboo Lobby Taiyaar Hai!\n\n"
-    Msg += f"👑 Creator: {User.first_name}\n"
-    Msg += f"📝 Join Karne Ke Liye /Join Likhein\n"
-    Msg += f"❌ Cancel Karne Ke Liye /Cancel Likhein"
-    
-    await update.message.reply_text(Msg)
-
-async def Join_Lobby(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    User = update.message.from_user
-    
-    if not Lobby_Data["Is_Open"]:
-        await update.message.reply_text("Abhi Koi Active Lobby Nahi Hai 🚫")
-        return
-    
-    if User.id in Lobby_Data["Players"]:
-        await update.message.reply_text(f"{User.first_name}, Aap Pehle Se Join Ho! ✅")
-        return
-
-    Lobby_Data["Players"].append(User.id)
-    Lobby_Data["Player_Names"][User.id] = User.first_name
-    
-    Msg = f"👋 {User.first_name} Ne Lobby Join Kar Li Hai!\n"
-    Msg += f"👥 Total Players: {len(Lobby_Data['Players'])}"
-    await update.message.reply_text(Msg)
-
-async def Leave_Lobby(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    User = update.message.from_user
-    
-    if User.id not in Lobby_Data["Players"]:
-        await update.message.reply_text("Aap Is Lobby Mein Nahi Ho ❌")
-        return
-
-    Lobby_Data["Players"].remove(User.id)
-    del Lobby_Data["Player_Names"][User.id]
-    
-    if User.id == Lobby_Data["Creator_Id"]:
-        if len(Lobby_Data["Players"]) > 0:
-            Lobby_Data["Creator_Id"] = Lobby_Data["Players"][0]
-            New_Admin = Lobby_Data["Player_Names"][Lobby_Data["Creator_Id"]]
-            await update.message.reply_text(f"Creator Ne Leave Kiya. Ab {New_Admin} Naye Host Hain! 👑")
-        else:
-            Lobby_Data["Is_Open"] = False
-            await update.message.reply_text("Sab Players Chale Gaye. Lobby Band Ho Gayi Hai 📉")
-            return
-
-    await update.message.reply_text(f"{User.first_name} Ne Lobby Chhod Di Hai 👋")
-
-def Switch_Team_Turn():
-    if Game_State["Current_Turn_Team"] == "A":
-        Game_State["Current_Turn_Team"] = "B"
-    else:
-        Game_State["Current_Turn_Team"] = "A"
-
-async def Show_Players(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not Lobby_Data["Is_Open"]:
-        await update.message.reply_text("Lobby Khali Hai 😶")
-        return
-    
-    List_Text = "👥 Current Players In Lobby:\n\n"
-    for i, P_Id in enumerate(Lobby_Data["Players"], 1):
-        Name = Lobby_Data["Player_Names"][P_Id]
-        Role = "👑" if P_Id == Lobby_Data["Creator_Id"] else "👤"
-        List_Text += f"{i}. {Name} {Role}\n"
-    
-    await update.message.reply_text(List_Text)
-
-async def Cancel_Lobby(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    User = update.message.from_user
-    
-    if not Lobby_Data["Is_Open"]:
-        return
-
-    if User.id != Lobby_Data["Creator_Id"]:
-        await update.message.reply_text("Sirf Game Creator Hi Lobby Cancel Kar Sakta Hai! ⛔")
-        return
-
-    Lobby_Data["Is_Open"] = False
-    Lobby_Data["Players"] = []
-    Lobby_Data["Player_Names"] = {}
-    Lobby_Data["Creator_Id"] = None
-    
-    await update.message.reply_text("Game Creator Ne Lobby Cancel Kar Di Hai 🛑")
-
-async def Handle_Category_Selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    Query = update.callback_query
-    await Query.answer()
-    Category = Query.data.replace("Cat_", "")
-    Game_State["Category"] = Category
-    await Query.edit_message_text(f"Game Ki Category Ab {Category} Set Ho Gayi Hai! ✅")
-
-async def Start_Game(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    User = update.message.from_user
-    
-    if not Lobby_Data["Is_Open"]:
-        await update.message.reply_text("Pehle /Lobby Banayein Phir Start Karein! ⚠️")
-        return
-    
-    if User.id != Lobby_Data["Creator_Id"]:
-        await update.message.reply_text("Sirf Game Creator Hi Shuru Kar Sakta Hai! ⛔")
-        return
-    
-    Total_Players = Lobby_Data["Players"]
-    if len(Total_Players) < 2:
-        await update.message.reply_text("Kam Se Kam 2 Players Ka Hona Zaroori Hai! 👥")
-        return
-      
-    random.shuffle(Total_Players)
-    Mid = len(Total_Players) // 2
-    Game_State["Team_A"] = Total_Players[:Mid]
-    Game_State["Team_B"] = Total_Players[Mid:]
-    
-    Game_State["Is_Running"] = True
-    Lobby_Data["Is_Open"] = False
-    
-    Msg = "🎮 Game Shuru Ho Chuka Hai!\n\n"
-    
-    Msg += "🔴 Team A:\n"
-    for P_Id in Game_State["Team_A"]:
-        Msg += f"- {Lobby_Data['Player_Names'][P_Id]}\n"
-        
-    Msg += "\n🔵 Team B:\n"
-    for P_Id in Game_State["Team_B"]:
-        Msg += f"- {Lobby_Data['Player_Names'][P_Id]}\n"
-        
-    Msg += f"\n🎲 Pehli Baari: Team {Game_State['Current_Turn_Team']} Ki Hai!\n"
-    Msg += "Taiyaar Ho Jao! Agla Word Aa Raha Hai... 🚀"
-    
-    await update.message.reply_text(Msg)
-
-async def Next_Round(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    Current_Team_Key = f"Team_{Game_State['Current_Turn_Team']}"
-    Current_Players = Game_State[Current_Team_Key]
-
-    if not Current_Players:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Teams Mein Players Nahi Hain! ⚠️")
-        return
-      
-    Game_State["Clue_Giver"] = random.choice(Current_Players)
-    Clue_Giver_Name = Lobby_Data["Player_Names"][Game_State["Clue_Giver"]]
-    
-    Selected_Data = random.choice(Category_Words)
-    Game_State["Current_Word"] = Selected_Data["Word"]
-    Game_State["Taboo_Words"] = [W.lower() for W in Selected_Data["Taboo"]]
-    
-    try:
-        Secret_Msg = f"🤫 Aapka Secret Word Hai: {Game_State['Current_Word']}\n\n"
-        Secret_Msg += "🚫 Ye Taboo Words Use Mat Karna:\n"
-        for Word in Selected_Data["Taboo"]:
-            Secret_Msg += f"- {Word}\n"
-        
-        await context.bot.send_message(chat_id=Game_State["Clue_Giver"], text=Secret_Msg)
-        
-        Group_Msg = f"📢 Agla Round Shuru!\n\n"
-        Group_Msg += f"👤 Clue Giver: {Clue_Giver_Name}\n"
-        Group_Msg += f"👥 Team: {Game_State['Current_Turn_Team']}\n\n"
-        Group_Msg += "Baki Sab Guess Karien! Clue Giver Bolna Shuru Karein 🎙️"
-        
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=Group_Msg)
-        
-    except Exception:
-        Error_Msg = f"❌ {Clue_Giver_Name} Ko Word Nahi Bhej Saka! Kya Unhone Bot Ko Private Mein /Start Kiya Hai?"
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=Error_Msg)
-        
-        asyncio.create_task(Round_Timer(update.effective_chat.id, context, Game_State["Current_Word"]))
-
-async def Message_Referee(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not Game_State["Is_Running"]:
-        return
-
-    User = update.message.from_user
-    Text_Received = update.message.text.lower().strip()
-    Current_Chat_Id = update.effective_chat.id
-    
-    if User.id == Game_State["Clue_Giver"]:
-        for Forbidden in Game_State["Taboo_Words"]:
-            if Forbidden in Text_Received:
-                Game_State["Is_Running"] = False
-                Msg = f"Galti Kar Di! {User.first_name} Ne Taboo Word '{Forbidden}' Bol Diya ⛔\n\n"
-                Msg += f"Is Round Mein Team {Game_State['Current_Turn_Team']} Ko Koi Point Nahi Milega.\n"
-                Msg += f"Sahi Word Tha: {Game_State['Current_Word']}\n\n"
-                Msg += "Turn Switch Ho Rahi Hai... Agla Round Shuru Karne Ke Liye /Next Likhein 🔄"
-                
-                Switch_Team_Turn()
-                await update.message.reply_text(Msg)
-                return
-              
-    else:
-        if Text_Received == Game_State["Current_Word"].lower():
-            Team_Key = Game_State["Current_Turn_Team"]
-            Game_State["Scores"][Team_Key] += 1
-            
-            Update_Player_Stats(User.id, User.first_name, points_to_add=10)
-            
-            Msg = f"Wah! {User.first_name} Ne Sahi Pehchana! 🎉\n\n"
-            Msg += f"Sahi Jawab Tha: {Game_State['Current_Word']}\n"
-            Msg += f"Team {Team_Key} Ko 10 Points Milte Hain 🏆\n\n"
-            Msg += f"Agla Round Shuru Karne Ke Liye /Next Likhein 🚀"
-            
-            Game_State["Is_Running"] = False
-            Switch_Team_Turn()
-            await update.message.reply_text(Msg)
-
-async def Round_Timer(chat_id, context: ContextTypes.DEFAULT_TYPE, round_word):
-    await asyncio.sleep(120)
-    
-    if Game_State["Is_Running"] and Game_State["Current_Word"] == round_word:
-        Game_State["Is_Running"] = False
-        
-        Msg = "Waqt Khatam! ⏰\n\n"
-        Msg += f"Koi Bhi Sahi Jawab Nahi De Paya. Sahi Word Tha: {Game_State['Current_Word']}\n"
-        Msg += "Ab Agli Team Ki Baari Hai. /Next Se Shuru Karein 🔄"
-        
-        Switch_Team_Turn()
-        await context.bot.send_message(chat_id=chat_id, text=Msg)
-
-async def Show_Leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    Cursor.execute("Select Name, Points From Players Order By Points Desc Limit 5")
-    Top_Players = Cursor.fetchall()
-    
-    if not Top_Players:
-        await update.message.reply_text("Abhi Tak Kisi Ka Record Nahi Hai! 😶")
-        return
-
-    Msg = "🏆 Taboo Legends Leaderboard 🏆\n\n"
-    for i, (Name, Points) in enumerate(Top_Players, 1):
-        Msg += f"{i}. {Name} - {Points} Points 🎖️\n"
-    
-    Msg += "\nKya Aap Is List Mein Aa Sakte Hain? Khelte Rahiye! 🚀"
-    await update.message.reply_text(Msg)
-
-async def My_Profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    User = update.message.from_user
-    Cursor.execute("Select Points, Wins, Games_Played From Players Where User_Id = ?", (User.id,))
-    Stats = Cursor.fetchone()
-    
-    if Stats:
-        Msg = f"👤 Player Profile: {User.first_name}\n\n"
-        Msg += f"⭐ Total Points: {Stats[0]}\n"
-        Msg += f"🏆 Matches Won: {Stats[1]}\n"
-        Msg += f"🎮 Games Played: {Stats[2]}\n"
-    else:
-        Msg = "Aapka Koi Data Nahi Mila. Pehle Ek Match Jeetiye! ⚡"
-        
-    await update.message.reply_text(Msg)
-
-async def Help_Command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    Text = "Sahayata Menu:\n\n"
-    Text += "/Lobby - Nayi Game Lobby Banayein\n"
-    Text += "/Join - Game Mein Shamil Hone Ke Liye\n"
-    Text += "/Start - Game Shuru Karne Ke Liye\n"
-    Text += "/Profile - Apna Score Dekhne Ke Liye\n"
-    Text += "/Rules - Game Ke Niyam Dekhein\n"
-    Text += "/Guide - Khelne Ka Tarika Samjhein"
-    await update.message.reply_text(Text)
-
-async def Rules_Command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    Text = "Game Ke Niyam:\n\n"
-    Text += "1. Clue Giver Kisi Bhi Taboo Word Ka Use Nahi Kar Sakta\n"
-    Text += "2. Word Ka Tukda Ya Spelling Bolna Mana Hai\n"
-    Text += "3. Galat Ishara Ya Acting Bhi Taboo Mani Jayegi\n"
-    Text += "4. Sahi Guess Karne Par Team Ko 10 Points Milenge"
-    await update.message.reply_text(Text)
-
-async def Guide_Command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    Text = "Khelne Ka Tarika:\n\n"
-    Text += "Step 1: Sabse Pehle /Lobby Banayein\n"
-    Text += "Step 2: Sab Dost /Join Karein\n"
-    Text += "Step 3: Creator /Start Dabayein\n"
-    Text += "Step 4: Clue Giver Apne DM Mein Word Dekhe\n"
-    Text += "Step 5: Baki Sab Group Mein Sahi Jawab Guess Karein"
-    await update.message.reply_text(Text)
-
-async def Warning_Timer1(chat_id, context: ContextTypes.DEFAULT_TYPE):
-    await asyncio.sleep(90)
-    if Game_State["Is_Running"]:
-        await context.bot.send_message(chat_id=chat_id, text="Jaldi Karein! Sirf 90 Seconds Baaki Hain! ⏳")
-
-async def Warning_Timer2(chat_id, context: ContextTypes.DEFAULT_TYPE):
-    await asyncio.sleep(60)
-    if Game_State["Is_Running"]:
-        await context.bot.send_message(chat_id=chat_id, text="Jaldi Karein! Sirf 60 Seconds Baaki Hain! ⏳")
-
-async def Warning_Timer3(chat_id, context: ContextTypes.DEFAULT_TYPE):
+# Timer Logic Function
+async def Manage_Round_Timer(chat_id, context, round_word):
     await asyncio.sleep(30)
-    if Game_State["Is_Running"]:
-        await context.bot.send_message(chat_id=chat_id, text="Jaldi Karein! Sirf 30 Seconds Baaki Hain! ⏳")
+    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
+        await context.bot.send_message(chat_id=chat_id, text="Time Alert Only Ninety Seconds Remaining\nHurry Up And Provide Better Clues To Your Team")
 
-async def Warning_Timer4(chat_id, context: ContextTypes.DEFAULT_TYPE):
-    await asyncio.sleep(10) 
-    if Game_State["Is_Running"]:
-        await context.bot.send_message(chat_id=chat_id, text="Jaldi Karein! Sirf 10 Seconds Baaki Hain! ⏳")
+    await asyncio.sleep(30)
+    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
+        await context.bot.send_message(chat_id=chat_id, text="Time Alert Only Sixty Seconds Remaining\nThe Clock Is Ticking Fast Make Your Guess Quickly")
 
-async def Game_Status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not Game_State["Is_Running"]:
-        await update.message.reply_text("Abhi Koi Game Nahi Chal Raha Hai! 🛌")
-        return
+    await asyncio.sleep(30)
+    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
+        await context.bot.send_message(chat_id=chat_id, text="Time Alert Final Thirty Seconds Remaining\nThis Is Your Last Chance To Score Points In This Round")
 
-    Msg = "📊 Current Game Status:\n\n"
-    Msg += f"🔴 Team A Score: {Game_State['Scores']['A']}\n"
-    Msg += f"🔵 Team B Score: {Game_State['Scores']['B']}\n"
-    Msg += f"⏳ Current Turn: Team {Game_State['Current_Turn_Team']}\n"
-    Msg += f"👤 Clue Giver: {Lobby_Data['Player_Names'][Game_State['Clue_Giver']]}"
-    
-    await update.message.reply_text(Msg)
-
-async def Reset_Game(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    User = update.message.from_user
-    if User.id != Lobby_Data["Creator_Id"]:
-        await update.message.reply_text("Sirf Creator Hi Game Reset Kar Sakta Hai! 🚫")
-        return
+    await asyncio.sleep(30)
+    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
+        Game_State["Round_Active"] = False
+        Game_State["Current_Word"] = None
+        current = Game_State["Current_Turn_Team"]
+        Game_State["Current_Turn_Team"] = "B" if current == "A" else "A"
         
-    Game_State["Is_Running"] = False
-    Lobby_Data["Is_Open"] = False
-    await update.message.reply_text("Game Ko Puri Tarah Reset Kar Diya Gaya Hai! 🔄")
+        Final_Msg = "Round Over The Time Has Fully Expired\n\n"
+        Final_Msg += "The Correct Word Was " + round_word + "\n"
+        Final_Msg += "No Points Were Awarded To Any Team This Time\n\n"
+        Final_Msg += "The Turn Has Now Shifted To The Other Team\n"
+        Final_Msg += "Please Type /Next To Begin The Following Round"
+        await context.bot.send_message(chat_id=chat_id, text=Final_Msg)
 
-def Main():
-    Token = "8380924465:AAFwbA-55qfkrA0-QJ_AL2uWuuS3Pt7y-Mw"
+# Command Handlers
+async def Help_Handler(update: Update, context):
+    Guide = "Welcome To The Professional Taboo Gaming Bot Help Menu\n\n"
+    Guide += "Available Commands For Managing Your Session\n"
+    Guide += "1. /Lobby Create A New Gaming Room For Your Friends\n"
+    Guide += "2. /Join Enter An Already Created Active Lobby\n"
+    Guide += "3. /Start Begin The Game Match Once Teams Are Ready\n"
+    Guide += "4. /Next Fetch The New Secret Word In Your Private Chat\n"
+    Guide += "5. /Status View The Current Scoreboard And Match Info\n"
+    Guide += "6. /Profile View Your Personal Statistics And Career Points\n"
+    Guide += "7. /Leaderboard See The Global Ranking Of Top Players\n"
+    Guide += "8. /Reset Terminate The Current Session And Start Fresh\n\n"
+    Guide += "Enjoy Your Game And Play Fair To Climb The Ranks"
+    await update.message.reply_text(Guide)
+
+async def Lobby_Handler(update: Update, context):
+    if Lobby_Data["Is_Open"]: 
+        return await update.message.reply_text("Warning An Active Lobby Is Already In Operation")
+    user = update.message.from_user
+    Lobby_Data.update({"Is_Open": True, "Creator_Id": user.id, "Players": [user.id], "Player_Names": {user.id: user.first_name}})
     
-    App = ApplicationBuilder().token(Token).connect_timeout(40).read_timeout(40).write_timeout(40).pool_timeout(40).build()
+    Invite = "A New Taboo Gaming Lobby Has Been Successfully Created\n\n"
+    Invite += "Host Name " + user.first_name + "\n"
+    Invite += "Status Waiting For Players To Join The Session\n\n"
+    Invite += "Instructions For Joining Participants\n"
+    Invite += "Type /Join To Enter This Room Right Now\n"
+    Invite += "Type /Start Once All Participants Are Present\n"
+    Invite += "Minimum Of Two Players Required For Match Activation"
+    await update.message.reply_text(Invite)
+
+async def Join_Handler(update: Update, context):
+    user = update.message.from_user
+    if not Lobby_Data["Is_Open"]: 
+        return await update.message.reply_text("Error No Active Lobby Found To Join At This Moment")
+    if user.id in Lobby_Data["Players"]: 
+        return await update.message.reply_text("Information You Are Already A Member Of This Lobby")
     
-    App.add_handler(CommandHandler("Category", Set_Category))
-    App.add_handler(CallbackQueryHandler(Handle_Category_Selection, pattern="^Cat_"))
-    App.add_handler(CommandHandler("Lobby", Create_Lobby))
-    App.add_handler(CommandHandler("Join", Join_Lobby))
-    App.add_handler(CommandHandler("Leave", Leave_Lobby))
-    App.add_handler(CommandHandler("Players", Show_Players))
-    App.add_handler(CommandHandler("Cancel", Cancel_Lobby))
-    App.add_handler(CommandHandler("Start", Start_Game))
-    App.add_handler(CommandHandler("Next", Next_Round))
-    App.add_handler(CommandHandler("Profile", My_Profile))
-    App.add_handler(CommandHandler("Leaderboard", Show_Leaderboard))
-    App.add_handler(CommandHandler("Help", Help_Command))
-    App.add_handler(CommandHandler("Rules", Rules_Command))
-    App.add_handler(CommandHandler("Guide", Guide_Command))
-    App.add_handler(CommandHandler("Status", Game_Status))
-    App.add_handler(CommandHandler("Reset", Reset_Game))
+    Lobby_Data["Players"].append(user.id)
+    Lobby_Data["Player_Names"][user.id] = user.first_name
     
-    App.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), Message_Referee))
+    Update_Msg = user.first_name + " Has Joined The Game Lobby Successfully\n\n"
+    Update_Msg += "Current Participant Count " + str(len(Lobby_Data["Players"])) + "\n"
+    Update_Msg += "Waiting For More Friends To Join The Fun\n"
+    Update_Msg += "Invite Others By Sharing The Group Link Immediately"
+    await update.message.reply_text(Update_Msg)
+
+async def Start_Handler(update: Update, context):
+    if not Lobby_Data["Is_Open"] or update.message.from_user.id != Lobby_Data["Creator_Id"]:
+        return await update.message.reply_text("Permission Denied Only The Creator Can Initialize The Match")
+    if len(Lobby_Data["Players"]) < 2:
+        return await update.message.reply_text("Insufficient Players Required At Least Two For Start")
     
-    print("Taboo Bot Is Running... 🚀")
-    App.run_polling(drop_pending_updates=True)
+    random.shuffle(Lobby_Data["Players"])
+    mid = len(Lobby_Data["Players"]) // 2
+    Game_State.update({
+        "Is_Running": True, 
+        "Team_A": Lobby_Data["Players"][:mid], 
+        "Team_B": Lobby_Data["Players"][mid:], 
+        "Scores": {"A": 0, "B": 0}
+    })
+    Lobby_Data["Is_Open"] = False
+    
+    Battle_Msg = "The Game Has Commenced And Teams Are Now Locked\n\n"
+    Battle_Msg += "Members Of Team A\n"
+    for p_id in Game_State["Team_A"]: Battle_Msg += "- " + Lobby_Data["Player_Names"][p_id] + "\n"
+    Battle_Msg += "\nMembers Of Team B\n"
+    for p_id in Game_State["Team_B"]: Battle_Msg += "- " + Lobby_Data["Player_Names"][p_id] + "\n"
+    Battle_Msg += "\nStarting Round With Team A Ready Your Guesses\n"
+    Battle_Msg += "Please Type /Next To See Your First Secret Word"
+    await update.message.reply_text(Battle_Msg)
+
+async def Next_Round_Handler(update: Update, context):
+    if not Game_State["Is_Running"]: 
+        return await update.message.reply_text("No Match Is Currently Running At The Moment")
+    
+    team_key = "Team_" + Game_State["Current_Turn_Team"]
+    Game_State["Clue_Giver"] = random.choice(Game_State[team_key])
+    word_obj = random.choice(Word_Library)
+    
+    Game_State.update({
+        "Current_Word": word_obj["Word"],
+        "Taboo_Words": [w.lower() for w in word_obj["Taboo"]],
+        "Round_Active": True
+    })
+
+    try:
+        Dm_Msg = "Your Secret Taboo Details Are Provided Below\n\n"
+        Dm_Msg += "Main Secret Word " + word_obj['Word'] + "\n\n"
+        Dm_Msg += "Restricted Taboo Words To Avoid\n"
+        for w in word_obj['Taboo']: Dm_Msg += "- " + w + "\n"
+        Dm_Msg += "\nStart Giving Clues In The Group Chat Now"
+        
+        await context.bot.send_message(chat_id=Game_State["Clue_Giver"], text=Dm_Msg)
+        
+        Announce = "A New Round Has Officially Started For Everyone\n\n"
+        Announce += "Selected Clue Giver " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + "\n"
+        Announce += "Current Active Team Team " + Game_State["Current_Turn_Team"] + "\n\n"
+        Announce += "Secret Details Have Been Sent To The Clue Giver Private DM\n"
+        Announce += "All Other Participants Should Start Guessing The Word\n"
+        Announce += "The Timer Has Been Activated Good Luck To All"
+        await update.message.reply_text(Announce)
+        
+        asyncio.create_task(Manage_Round_Timer(update.effective_chat.id, context, word_obj["Word"]))
+    except Exception:
+        await update.message.reply_text("Communication Error Could Not Message The Clue Giver DM")
+
+async def Referee_Logic(update: Update, context):
+    if not Game_State["Round_Active"]: return
+    user, text = update.message.from_user, update.message.text.lower().strip()
+
+    if user.id == Game_State["Clue_Giver"]:
+        for forbidden in Game_State["Taboo_Words"]:
+            if forbidden in text:
+                Game_State["Round_Active"] = False
+                Game_State["Current_Turn_Team"] = "B" if Game_State["Current_Turn_Team"] == "A" else "A"
+                Penalty = "Violation Detected A Taboo Word Has Been Spoken\n\n"
+                Penalty += "Player Name " + user.first_name + "\n"
+                Penalty += "Forbidden Word Used " + forbidden + "\n\n"
+                Penalty += "The Turn Has Now Switched Automatically\n"
+                Penalty += "Type /Next To Begin The Next Round Immediately"
+                await update.message.reply_text(Penalty)
+                return
+    else:
+        if text == Game_State["Current_Word"].lower():
+            Game_State["Round_Active"] = False
+            team = Game_State["Current_Turn_Team"]
+            Game_State["Scores"][team] += 1
+            Update_Stats(user.id, user.first_name, pts=10)
+            
+            Victory = "Fantastic Achievement The Word Has Been Guessed Correctlty\n\n"
+            Victory += "Winning Participant Name " + user.first_name + "\n"
+            Victory += "Ten Points Awarded To Team " + team + "\n\n"
+            Victory += "Great Teamwork Shown By The Players Today\n"
+            Victory += "Type /Next To Proceed To The Next Thrilling Round"
+            Game_State["Current_Word"] = None
+            await update.message.reply_text(Victory)
+
+async def Profile_Handler(update: Update, context):
+    Cursor.execute("Select Points, Wins, Games_Played From Players Where User_Id = ?", (update.message.from_user.id,))
+    data = Cursor.fetchone()
+    if not data: return await update.message.reply_text("No Statistics Found For This Profile In Database")
+    
+    Profile_Msg = "Your Personal Gaming Profile Statistics Report\n\n"
+    Profile_Msg += "Participant Name " + update.message.from_user.first_name + "\n"
+    Profile_Msg += "Total Career Points Earned " + str(data[0]) + "\n"
+    Profile_Msg += "Total Match Victories Recorded " + str(data[1]) + "\n"
+    Profile_Msg += "Total Number Of Games Played " + str(data[2]) + "\n\n"
+    Profile_Msg += "Continue Playing To Improve Your Global Ranking Status"
+    await update.message.reply_text(Profile_Msg)
+
+async def Leaderboard_Handler(update: Update, context):
+    Cursor.execute("Select Name, Points From Players Order By Points Desc Limit 5")
+    ranks = Cursor.fetchall()
+    Board = "Presenting The Global Hall Of Fame Top Five Players\n\n"
+    for i, p in enumerate(ranks): 
+        Board += str(i+1) + ". " + p[0] + " With Total Points " + str(p[1]) + "\n"
+    Board += "\nCan You Surpass These Legends In The Next Game\n"
+    Board += "Keep Playing Regularly To Reach The Top Position"
+    await update.message.reply_text(Board)
+
+async def Reset_Handler(update: Update, context):
+    global Lobby_Data, Game_State
+    Lobby_Data = {"Is_Open": False, "Creator_Id": None, "Players": [], "Player_Names": {}}
+    Game_State.update({"Is_Running": False, "Round_Active": False, "Current_Word": None})
+    
+    Reset_Msg = "The Game Engine Has Been Successfully Reset To Default\n\n"
+    Reset_Msg += "All Current Session Data Has Been Wiped Clean\n"
+    Reset_Msg += "You May Now Create A New Lobby Using /Lobby Command\n\n"
+    Reset_Msg += "Thank You For Using Our Automated Gaming System"
+    await update.message.reply_text(Reset_Msg)
+
+async def Status_Handler(update: Update, context):
+    if not Game_State["Is_Running"]: 
+        return await update.message.reply_text("Information No Active Game Match Is Currently In Progress")
+    
+    Status_Report = "Presenting The Current Detailed Match Status Report\n\n"
+    Status_Report += "Team A Current Score " + str(Game_State["Scores"]["A"]) + " Points\n"
+    Status_Report += "Team B Current Score " + str(Game_State["Scores"]["B"]) + " Points\n\n"
+    
+    # Leader Logic
+    if Game_State["Scores"]["A"] > Game_State["Scores"]["B"]:
+        Status_Report += "Dominating Team Team A Is Currently Leading The Match\n"
+    elif Game_State["Scores"]["B"] > Game_State["Scores"]["A"]:
+        Status_Report += "Dominating Team Team B Is Currently Leading The Match\n"
+    else:
+        Status_Report += "Match Status Both Teams Are Currently On Equal Scores\n"
+        
+    Status_Report += "\nCurrent Turn Team " + Game_State["Current_Turn_Team"] + "\n"
+    
+    if Game_State["Round_Active"]:
+        Status_Report += "Round Status Active Word Guessing Is Ongoing\n"
+        Status_Report += "Current Clue Giver " + Lobby_Data["Player_Names"].get(Game_State["Clue_Giver"], "Unknown") + "\n"
+    else:
+        Status_Report += "Round Status Waiting For Next Round Initialization\n"
+    
+    Status_Report += "\nKeep Playing And Perform Better To Secure Your Victory"
+    await update.message.reply_text(Status_Report)
+
+def main():
+    Token_Val = "8380924465:AAFwbA-55qfkrA0-QJ_AL2uWuuS3Pt7y-Mw"
+    Application = ApplicationBuilder().token(Token_Val).connect_timeout(40).read_timeout(40).write_timeout(40).pool_timeout(40).build()
+    
+    Application.add_handler(CommandHandler("Help", Help_Handler))
+    Application.add_handler(CommandHandler("Lobby", Lobby_Handler))
+    Application.add_handler(CommandHandler("Join", Join_Handler))
+    Application.add_handler(CommandHandler("Start", Start_Handler))
+    Application.add_handler(CommandHandler("Next", Next_Round_Handler))
+    Application.add_handler(CommandHandler("Status", Status_Handler))
+    Application.add_handler(CommandHandler("Profile", Profile_Handler))
+    Application.add_handler(CommandHandler("Leaderboard", Leaderboard_Handler))
+    Application.add_handler(CommandHandler("Reset", Reset_Handler))
+    Application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), Referee_Logic))
+    
+    print("Taboo Professional Engine Is Live")
+    Application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
-    Main()
+    main()
