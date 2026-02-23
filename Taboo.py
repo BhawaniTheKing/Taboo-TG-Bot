@@ -351,7 +351,8 @@ async def Lobby_Handler(update: Update, context):
     
     Invite += "🔥 Get Ready For A Fun Battle Of Words And Speed\n"
     Invite += "🌟 Show Everyone That You Are The Smartest Player Here\n"
-    Invite += "📢 Tell Your Friends To Join Quickly To Start The Fun"
+    Invite += "📢 Tell Your Friends To Join Quickly To Start The Fun\n\n"
+    Invite += "🛠️ System Architect: @bhawaniisinghshekhawat"
     
     await update.message.reply_text(Invite)
 
@@ -455,7 +456,8 @@ async def Start_Handler(update: Update, context):
     Battle_Msg += "👉 Please Type The Round Command To Get Your First Secret Word In DM\n"
     Battle_Msg += "👉 Clue Givers Must Check Their Private DM Before Giving Hints In The Group\n\n"
     
-    Battle_Msg += "🔥 May The Smartest And Fastest Team Win The Game Today 🔥"
+    Battle_Msg += "🔥 May The Smartest And Fastest Team Win The Game Today 🔥\n\n"
+    Battle_Msg += "🛠️ System Architect: @bhawaniisinghshekhawat"
     
     await update.message.reply_text(Battle_Msg)
 
@@ -566,7 +568,8 @@ async def Clue_Submit_Handler(update: Update, context):
         Forward_Msg += "💡 Hint Message: " + Clue_Text.upper() + "\n\n"
         Forward_Msg += "🔎 All Players Should Read This Hint And Type Their Guesses Now\n"
         Forward_Msg += "🕒 The Timer Is Running Fast So Give Your Best Answers Quickly\n"
-        Forward_Msg += "🏆 The First Person To Guess Correct Wins Ten Points For Their Team"
+        Forward_Msg += "🏆 The First Person To Guess Correct Wins Ten Points For Their Team\n\n"
+        Forward_Msg += "🛠️ System Architect: @bhawaniisinghshekhawat"
         await context.bot.send_message(chat_id=Group_Id, text=Forward_Msg)
         await update.message.reply_text("✅ Success Your Hint Has Been Sent To The Group Chat Successfully")
 
@@ -617,7 +620,8 @@ async def Referee_Logic(update: Update, context):
             Victory_Msg += "📈 Ten Points Have Been Awarded To Team " + Winning_Team + "\n\n"
             Victory_Msg += "You Are Doing Great Work And Thinking Very Fast Today\n"
             Victory_Msg += "Please Type The Round Command To Start The Next Exciting Round\n"
-            Victory_Msg += "Keep Playing Well To Reach The Top Of The Leaderboard"
+            Victory_Msg += "Keep Playing Well To Reach The Top Of The Leaderboard\n\n"
+            Victory_Msg += "🛠️ System Architect: @bhawaniisinghshekhawat"
             
             Game_State["Current_Word"] = None
             await update.message.reply_text(Victory_Msg)
@@ -968,7 +972,8 @@ async def Cancel_Handler(update: Update, context):
     Termination_Msg += "You Are Now Free To Start A New Game Using The Lobby Command\n"
     Termination_Msg += "We Hope To See You Back In The Game Very Soon\n\n"
     
-    Termination_Msg += "🌟 Thank You For Using Our Taboo Game Management System 🌟"
+    Termination_Msg += "🌟 Thank You For Using Our Taboo Game Management System 🌟\n\n"
+    Termination_Msg += "🛠️ System Architect: @bhawaniisinghshekhawat"
     
     await update.message.reply_text(Termination_Msg)
 
