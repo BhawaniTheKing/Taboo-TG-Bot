@@ -443,7 +443,7 @@ async def Reset_Game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Game Ko Puri Tarah Reset Kar Diya Gaya Hai! 🔄")
 
 def Main():
-    Token = "YOUR_BOT_TOKEN_HERE"
+    Token = "8380924465:AAFwbA-55qfkrA0-QJ_AL2uWuuS3Pt7y-Mw"
     
     App = ApplicationBuilder().token(TOKEN).connect_timeout(40).read_timeout(40).write_timeout(40).pool_timeout(40).build()
     
