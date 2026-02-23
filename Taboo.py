@@ -13,9 +13,6 @@ from telegram.ext import (
     CallbackQueryHandler
 )
 
-# Logging Setup For Tracking
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
 # Global State Management
 Lobby_Data = {
     "Is_Open": False,
@@ -452,7 +449,7 @@ def main():
     Application.add_handler(CommandHandler("Reset", Reset_Handler))
     Application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), Referee_Logic))
     
-    print("Taboo Professional Engine Is Live")
+    print("Taboo Professional Engine Is Live ✨")
     Application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
