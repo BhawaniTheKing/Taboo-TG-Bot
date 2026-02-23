@@ -909,7 +909,10 @@ async def Rules_Handler(update: Update, context):
     await update.message.reply_text(Summary)
 
 async def Cancel_Handler(update: Update, context):
-    # Check If There Is Actually Anything To Cancel
+    # Professional Global Declaration Must Be The Very First Line
+    global Lobby_Data, Game_State
+
+    # Now We Can Safely Check If There Is Actually Anything To Cancel
     if not Lobby_Data["Is_Open"] and not Game_State["Is_Running"]:
         Empty_Error = "❌ Operation Denied There Is No Active Lobby Or Match To Cancel ❌\n\n"
         Empty_Error += "The Gaming Engine Is Already In An Idle State Currently\n"
@@ -920,7 +923,6 @@ async def Cancel_Handler(update: Update, context):
     # Security Check Only The Creator Or An Admin Can Cancel
     User_Id = update.message.from_user.id
     if User_Id != Lobby_Data["Creator_Id"]:
-        # Optional You Can Add Admin Check Here Too
         No_Auth = "🚫 Access Restricted Only The Official Host Can Cancel This Match 🚫\n\n"
         No_Auth += "Participant Name " + update.message.from_user.first_name + " Is Not Authorized\n"
         No_Auth += "Please Request The Lobby Creator To Terminate The Session Properly\n"
@@ -928,8 +930,7 @@ async def Cancel_Handler(update: Update, context):
         return await update.message.reply_text(No_Auth)
 
     # Performing The Full System Reset For Cancellation
-    global Lobby_Data, Game_State
-    Lobby_Data.update({"Is_Open": False, "Creator_Id": None, "Players": [], "Player_Names": {}})
+    Lobby_Data = {"Is_Open": False, "Creator_Id": None, "Players": [], "Player_Names": {}}
     Game_State.update({
         "Is_Running": False, 
         "Round_Active": False, 
