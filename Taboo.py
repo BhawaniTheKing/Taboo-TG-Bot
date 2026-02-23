@@ -449,7 +449,6 @@ async def Start_Handler(update: Update, context):
     await update.message.reply_text(Battle_Msg)
 
 async def Next_Round_Handler(update: Update, context):
-    # Check If The Match Is Currently Operational In The System
     if not Game_State["Is_Running"]: 
         Invalid_Match = "🚫 Operation Denied There Is No Active Match Currently Running In This Session\n\n"
         Invalid_Match += "Please Ensure That You Have Created A Lobby And Started The Game Properly\n"
@@ -457,7 +456,6 @@ async def Next_Round_Handler(update: Update, context):
         Invalid_Match += "Once The Teams Are Formed You Can Use This Command To Begin The Rounds"
         return await update.message.reply_text(Invalid_Match)
 
-    # Prevent Starting A New Round If One Is Already Progressing
     if Game_State["Round_Active"]:
         Busy_Error = "⚠️ Warning An Active Round Is Already Progressing In This Group Right Now\n\n"
         Busy_Error += "You Cannot Fetch A New Word Until The Current Timer Expires Or Someone Guesses Right\n"
@@ -465,25 +463,22 @@ async def Next_Round_Handler(update: Update, context):
         Busy_Error += "Wait For The Current Clue Giver To Finish Their Turn Before Requesting The Next One"
         return await update.message.reply_text(Busy_Error)
 
-    # Determine The Current Team And Select A Random Clue Giver From That Roster
     Team_Key = "Team_" + Game_State["Current_Turn_Team"]
     Current_Team_Roster = Game_State[Team_Key]
     Game_State["Clue_Giver"] = random.choice(Current_Team_Roster)
     
-    # Select A Random Word Object From Our Massive Database Library
     Word_Obj = random.choice(Word_Library)
     
-    # Update The Global Game State With New Round Information
+    # Fixed Lower Case Methods Here
     Game_State.update({
         "Current_Word": Word_Obj["Word"],
-        "Taboo_Words": [W.Lower() for W in Word_Obj["Taboo"]],
+        "Taboo_Words": [W.lower() for W in Word_Obj["Taboo"]],
         "Round_Active": True
     })
 
     try:
-        # Constructing The Highly Detailed Secret Private Message
         Dm_Msg = "🤫 Your Exclusive Secret Taboo Word Details Have Arrived Safely 🤫\n\n"
-        Dm_Msg += "🎯 Your Primary Secret Word To Clue Is " + Word_Obj['Word'].Upper() + "\n\n"
+        Dm_Msg += "🎯 Your Primary Secret Word To Clue Is " + Word_Obj['Word'].upper() + "\n\n"
         Dm_Msg += "🚫 Strictly Restricted Taboo Words Mentioning These Will End Your Turn\n"
         for W in Word_Obj['Taboo']: Dm_Msg += "✨ " + W + "\n"
         Dm_Msg += "\n📝 Instructions Use The Clue Command In This Private DM To Send Hints To Group\n"
@@ -492,7 +487,6 @@ async def Next_Round_Handler(update: Update, context):
         
         await context.bot.send_message(chat_id=Game_State["Clue_Giver"], text=Dm_Msg)
         
-        # Grand Announcement For All Group Members To See
         Announce = "🔔 A Fresh Exciting Round Has Officially Commenced For Everyone 🔔\n\n"
         Announce += "👤 Nominated Clue Giver For This Round " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + "\n"
         Announce += "🚩 Currently Playing Active Team Team " + Game_State["Current_Turn_Team"] + "\n\n"
@@ -502,11 +496,9 @@ async def Next_Round_Handler(update: Update, context):
         Announce += "🌟 Use Your Maximum Intelligence To Win Ten Points For Your Respective Team"
         await update.message.reply_text(Announce)
         
-        # Initialize The Background Timer Task For Round Management
         asyncio.create_task(Manage_Round_Timer(update.effective_chat.id, context, Word_Obj["Word"]))
         
     except Exception:
-        # Fail Safe Mechanism If The Bot Is Unable To Private Message The Player
         Fail_Msg = "❌ Critical Communication Error Could Not Deliver The Secret Message ❌\n\n"
         Fail_Msg += "It Seems The Nominated Clue Giver " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + " Has Blocked The Bot\n"
         Fail_Msg += "Please Ensure That You Have Started The Bot In Private DM To Receive Words\n"
@@ -702,6 +694,64 @@ async def Leaderboard_Handler(update: Update, context):
     
     await update.message.reply_text(Board)
 
+# Function To Show Current Lobby Members
+async def Members_Handler(update: Update, context):
+    if not Lobby_Data["Players"]:
+        return await update.message.reply_text("🔍 System Alert The Lobby Is Currently Empty With No Active Participants")
+    
+    Member_List = "👥 Current Professional Gaming Lobby Participant Roster 👥\n\n"
+    for P_Id in Lobby_Data["Players"]:
+        Member_List += "✨ Participant Name " + Lobby_Data["Player_Names"][P_Id] + "\n"
+    
+    Member_List += "\n📊 Total Count Of Players Currently Waiting In This Session " + str(len(Lobby_Data["Players"]))
+    await update.message.reply_text(Member_List)
+
+# Function To Show Team Distribution
+async def Team_Handler(update: Update, context):
+    if not Game_State["Is_Running"]:
+        return await update.message.reply_text("🚫 Error Teams Are Not Formed Until The Official Match Begins")
+    
+    Team_Msg = "⚔️ Official Team Distribution Roster For The Current Match ⚔️\n\n"
+    Team_Msg += "🟦 Roster Members Of Team Alpha\n"
+    for P_Id in Game_State["Team_A"]: Team_Msg += "✨ " + Lobby_Data["Player_Names"][P_Id] + "\n"
+    
+    Team_Msg += "\n🟥 Roster Members Of Team Bravo\n"
+    for P_Id in Game_State["Team_B"]: Team_Msg += "✨ " + Lobby_Data["Player_Names"][P_Id] + "\n"
+    
+    await update.message.reply_text(Team_Msg)
+
+# Function To Provide A Visual Hint To The Group
+async def Hint_Handler(update: Update, context):
+    if not Game_State["Round_Active"]:
+        return await update.message.reply_text("🚫 System Alert There Is No Active Secret Word To Provide A Hint For")
+    
+    Secret = Game_State["Current_Word"]
+    # Generates A Masked Hint Like A _ _ L E
+    Masked = Secret[0] + " " + " ".join(["_" for _ in range(len(Secret)-1)])
+    
+    Hint_Msg = "💡 Official System Hint Generated For The Current Secret Word 💡\n\n"
+    Hint_Msg += "🔎 Word Structure Format " + Masked.upper() + "\n"
+    Hint_Msg += "📏 Total Number Of Characters In The Hidden Word " + str(len(Secret)) + "\n\n"
+    Hint_Msg += "📢 Everyone Please Use This Structural Information To Refine Your Guesses"
+    await update.message.reply_text(Hint_Msg)
+
+# Function To Check Whose Turn It Is
+async def Turn_Handler(update: Update, context):
+    if not Game_State["Is_Running"]:
+        return await update.message.reply_text("🔍 Match Status No Active Turn Recording Since The Game Has Not Started")
+    
+    Team_Name = "Team Alpha" if Game_State["Current_Turn_Team"] == "A" else "Team Bravo"
+    Turn_Report = "🔄 Official Turn Assignment Tracking Report 🔄\n\n"
+    Turn_Report += "🚩 Current Active Turn Belongs To " + Team_Name + "\n"
+    
+    if Game_State["Round_Active"]:
+        Turn_Report += "👤 Current Assigned Clue Giver " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + "\n"
+        Turn_Report += "🕒 Remaining Time Is Ticking Down In The Background Task\n"
+    else:
+        Turn_Report += "🕒 Status Waiting For The Authorized Member To Type The Next Command\n"
+    
+    await update.message.reply_text(Turn_Report)
+
 async def Reset_Handler(update: Update, context):
     # Accessing Global Variables To Perform A Complete System Wipe
     global Lobby_Data, Game_State
@@ -857,6 +907,50 @@ async def Rules_Handler(update: Update, context):
     
     await update.message.reply_text(Summary)
 
+async def Cancel_Handler(update: Update, context):
+    # Check If There Is Actually Anything To Cancel
+    if not Lobby_Data["Is_Open"] and not Game_State["Is_Running"]:
+        Empty_Error = "❌ Operation Denied There Is No Active Lobby Or Match To Cancel ❌\n\n"
+        Empty_Error += "The Gaming Engine Is Already In An Idle State Currently\n"
+        Empty_Error += "You Can Create A New Session By Using The Lobby Command Anytime\n"
+        Empty_Error += "No Resources Are Currently Being Used By The System Memory"
+        return await update.message.reply_text(Empty_Error)
+
+    # Security Check Only The Creator Or An Admin Can Cancel
+    User_Id = update.message.from_user.id
+    if User_Id != Lobby_Data["Creator_Id"]:
+        # Optional You Can Add Admin Check Here Too
+        No_Auth = "🚫 Access Restricted Only The Official Host Can Cancel This Match 🚫\n\n"
+        No_Auth += "Participant Name " + update.message.from_user.first_name + " Is Not Authorized\n"
+        No_Auth += "Please Request The Lobby Creator To Terminate The Session Properly\n"
+        No_Auth += "This Protocol Prevents Unauthorized Termination Of Active Gaming Rounds"
+        return await update.message.reply_text(No_Auth)
+
+    # Performing The Full System Reset For Cancellation
+    global Lobby_Data, Game_State
+    Lobby_Data.update({"Is_Open": False, "Creator_Id": None, "Players": [], "Player_Names": {}})
+    Game_State.update({
+        "Is_Running": False, 
+        "Round_Active": False, 
+        "Current_Word": None, 
+        "Team_A": [], 
+        "Team_B": [], 
+        "Scores": {"A": 0, "B": 0}
+    })
+    
+    Termination_Msg = "🛑 Official Match Cancellation Notice Successfully Processed 🛑\n\n"
+    Termination_Msg += "The Current Gaming Session Has Been Terminated By The Authorized Host\n"
+    Termination_Msg += "All Active Rounds Scores And Team Formations Have Been Wiped Clean\n"
+    Termination_Msg += "The Bot Memory Is Now Initialized Back To The Standard Default State\n\n"
+    
+    Termination_Msg += "📝 Management Information For All Participants Below\n"
+    Termination_Msg += "You Are Now Free To Initiate A Brand New Match Session Using Lobby Command\n"
+    Termination_Msg += "We Hope To See You Back In The Competitive Arena Very Soon Indeed\n\n"
+    
+    Termination_Msg += "🌟 Thank You For Utilizing Our Professional Taboo Management Services 🌟"
+    
+    await update.message.reply_text(Termination_Msg)
+
 def main():
     Token_Val = "8380924465:AAFwbA-55qfkrA0-QJ_AL2uWuuS3Pt7y-Mw"
     Application = ApplicationBuilder().token(Token_Val).connect_timeout(40).read_timeout(40).write_timeout(40).pool_timeout(40).build()
@@ -865,13 +959,18 @@ def main():
     Application.add_handler(CommandHandler("lobby", Lobby_Handler))
     Application.add_handler(CommandHandler("join", Join_Handler))
     Application.add_handler(CommandHandler("start", Start_Handler))
-    Application.add_handler(CommandHandler("next", Next_Round_Handler))
+    Application.add_handler(CommandHandler("round", Next_Round_Handler))
+    Application.add_handler(CommandHandler("cancel", Cancel_Handler))
     Application.add_handler(CommandHandler("status", Status_Handler))
     Application.add_handler(CommandHandler("profile", Profile_Handler))
     Application.add_handler(CommandHandler("leaderboard", Leaderboard_Handler))
     Application.add_handler(CommandHandler("reset", Reset_Handler))
     Application.add_handler(CommandHandler("clue", Clue_Submit_Handler))
     Application.add_handler(CommandHandler("rule", Rules_Handler))
+    Application.add_handler(CommandHandler("members", Members_Handler))
+    Application.add_handler(CommandHandler("team", Team_Handler))
+    Application.add_handler(CommandHandler("hint", Hint_Handler))
+    Application.add_handler(CommandHandler("turn", Turn_Handler))
     Application.add_handler(CommandHandler("guide", Guide_Handler))
     Application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), Referee_Logic))
     
