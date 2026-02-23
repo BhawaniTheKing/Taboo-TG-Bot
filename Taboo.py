@@ -23,14 +23,13 @@ Lobby_Data = {
 
 Game_State = {
     "Is_Running": False,
-    "Team_A": [],
-    "Team_B": [],
-    "Scores": {"A": 0, "B": 0},
-    "Current_Turn_Team": "A",
+    "Team_Bjp": [],
+    "Team_Congress": [],
+    "Scores": {"Bjp": 0, "Congress": 0},
+    "Current_Turn_Team": "Bjp",
     "Current_Word": None,
     "Taboo_Words": [],
     "Clue_Giver": None,
-    "Category": "General",
     "Round_Active": False
 }
 
@@ -210,267 +209,281 @@ Word_Library = [
 
 # Timer Logic Function
 async def Manage_Round_Timer(chat_id, context, round_word):
-    # Phase 1 Waiting For 30 Seconds Total Time Passed 30s Remaining 90s
+    # Total Time Is Now 5 Minutes Or 300 Seconds
+    
+    # Phase 1 Wait 60 Seconds Total 1 Minute Passed Remaining 4 Minutes
+    await asyncio.sleep(60)
+    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
+        Msg = "⏳ Time Alert Four Minutes Remaining In This Round\n\n"
+        Msg += "Keep Guessing The Word To Win Points For Your Team"
+        await context.bot.send_message(chat_id=chat_id, text=Msg)
+
+    # Phase 2 Wait 60 Seconds Total 2 Minutes Passed Remaining 3 Minutes
+    await asyncio.sleep(60)
+    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
+        Msg = "⏳ Time Alert Three Minutes Remaining For This Word\n\n"
+        Msg += "Clue Giver Please Give Some More Hints To Help Your Team"
+        await context.bot.send_message(chat_id=chat_id, text=Msg)
+
+    # Phase 3 Wait 60 Seconds Total 3 Minutes Passed Remaining 2 Minutes
+    await asyncio.sleep(60)
+    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
+        Msg = "⏳ Time Alert Two Minutes Remaining On The Clock\n\n"
+        Msg += "The Competition Between Bjp And Congress Is Getting Tough"
+        await context.bot.send_message(chat_id=chat_id, text=Msg)
+
+    # Phase 4 Wait 60 Seconds Total 4 Minutes Passed Remaining 1 Minute
+    await asyncio.sleep(60)
+    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
+        Msg = "⏳ Time Alert Only One Minute Remaining Hurry Up\n\n"
+        Msg += "This Is Your Last Chance To Score Points In This Turn"
+        await context.bot.send_message(chat_id=chat_id, text=Msg)
+
+    # Phase 5 Wait 30 Seconds Total 4 Minutes 30 Seconds Passed Remaining 30 Seconds
     await asyncio.sleep(30)
     if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
-        Alert_90 = "⏳ Time Alert Only Ninety Seconds Remaining For This Round\n\n"
-        Alert_90 += "📢 Clue Giver Please Provide Better Hints To Your Team Members\n"
-        Alert_90 += "🚀 Speed Up Your Thinking Process Before The Clock Runs Out\n"
-        Alert_90 += "🏆 Points Are Waiting For The Fastest Fingers In The Group"
-        await context.bot.send_message(chat_id=chat_id, text=Alert_90)
+        Msg = "🚨 Critical Alert Only Thirty Seconds Left Now\n\n"
+        Msg += "Type Your Best Guesses Fast Before The Round Ends"
+        await context.bot.send_message(chat_id=chat_id, text=Msg)
 
-    # Phase 2 Waiting For Another 30 Seconds Total Time Passed 60s Remaining 60s
-    await asyncio.sleep(30)
-    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
-        Alert_60 = "⚠️ Warning Alert Only Sixty Seconds Remaining On The Clock\n\n"
-        Alert_60 += "⚡ Half Of Your Allocated Time Has Already Been Consumed\n"
-        Alert_60 += "🧠 Use Your Brain Power To Guess The Secret Word Right Now\n"
-        Alert_60 += "🔥 The Battle Between Teams Is Getting Extremely Intense"
-        await context.bot.send_message(chat_id=chat_id, text=Alert_60)
-
-    # Phase 3 Waiting For Another 30 Seconds Total Time Passed 90s Remaining 30s
-    await asyncio.sleep(30)
-    if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
-        Alert_30 = "🚨 Critical Alert Only Thirty Seconds Left In This Match\n\n"
-        Alert_30 += "😱 The Pressure Is Building Up For Both The Teams Today\n"
-        Alert_30 += "🏃 Move Fast And Type Your Guesses Into The Chat Box\n"
-        Alert_30 += "💰 This Is Your Final Opportunity To Win This Round"
-        await context.bot.send_message(chat_id=chat_id, text=Alert_30)
-
-    # Phase 4 Final 20 Seconds Wait Remaining 10s
+    # Phase 6 Wait 20 Seconds Remaining 10 Seconds
     await asyncio.sleep(20)
     if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
-        await context.bot.send_message(chat_id=chat_id, text="🎯 Final Ten Seconds Remaining Hurry Up Everyone")
+        await context.bot.send_message(chat_id=chat_id, text="🎯 Final Ten Seconds Remaining On The Timer")
 
     # Final Deadly Countdown From 5 To 1
-    Countdown_Ticks = [5, 4, 3, 2, 1]
-    for Count in Countdown_Ticks:
+    for Count in [5, 4, 3, 2, 1]:
         await asyncio.sleep(1)
         if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
-            await context.bot.send_message(chat_id=chat_id, text="🧨 Counting Down " + str(Count))
+            await context.bot.send_message(chat_id=chat_id, text="🧨 Final Countdown " + str(Count))
 
     # Final Time Up Logic
     await asyncio.sleep(1)
     if Game_State["Round_Active"] and Game_State["Current_Word"] == round_word:
         Game_State["Round_Active"] = False
         Game_State["Current_Word"] = None
-        Current_Team = Game_State["Current_Turn_Team"]
-        Game_State["Current_Turn_Team"] = "B" if Current_Team == "A" else "A"
         
-        Final_Msg = "🛑 Round Terminated The Total Time Has Fully Expired\n\n"
-        Final_Msg += "✅ The Correct Secret Word Was " + round_word.upper() + "\n"
-        Final_Msg += "❌ Unfortunately No Points Were Awarded To Any Team Members\n\n"
-        Final_Msg += "🔄 The Turn Has Officially Shifted To The Other Team Now\n"
-        Final_Msg += "🆕 Please Type The Next Command To Begin The Following Round\n"
-        Final_Msg += "✨ Better Luck To Everyone In The Next Challenge"
+        # Turn Shift Logic Between Bjp And Congress
+        Old_Team = Game_State["Current_Turn_Team"]
+        Game_State["Current_Turn_Team"] = "Congress" if Old_Team == "Bjp" else "Bjp"
+        
+        Final_Msg = "🛑 Time Up The Round Has Ended Successfully\n\n"
+        Final_Msg += "The Correct Secret Word Was " + round_word.upper() + "\n"
+        Final_Msg += "No One Guessed It Right So No Points Are Awarded\n\n"
+        Final_Msg += "The Turn Has Now Shifted To Team " + Game_State["Current_Turn_Team"] + "\n"
+        Final_Msg += "Please Use The Next Command To Start The New Round"
         await context.bot.send_message(chat_id=chat_id, text=Final_Msg)
 
 # Command Handlers
 async def Help_Handler(update: Update, context):
-    Guide = "🌟 Welcome To The Official Taboo Master Professional Help Command Center 🌟\n\n"
+    Guide = "🌟 Taboo Master Bot Official Help Menu 🌟\n\n"
     
-    Guide += "Explore The Complete Command Directory Below To Master Your Gaming Session\n\n"
+    Guide += "Please Use The Following Commands To Play The Game Easily\n\n"
     
-    Guide += "📍 Primary Lobby And Session Management\n\n"
+    Guide += "📍 Match Setup Commands\n\n"
     
-    Guide += "1️⃣ /Lobby Create A New Official Gaming Room To Host Your Friends For A Match\n"
-    Guide += "2️⃣ /Join Register Yourself Into The Active Lobby To Participate In The Battle\n"
-    Guide += "3️⃣ /Start Initialize The Match Process Once Teams Are Balanced And Ready\n"
-    Guide += "4️⃣ /Members View The Complete List Of Participants Currently Inside The Lobby\n"
-    Guide += "5️⃣ /Cancel Terminate The Current Active Session And Wipe All Temporary Data\n"
-    Guide += "6️⃣ /Reset Fully Reinitialize The Game Engine Back To Factory Default Settings\n\n"
+    Guide += "1️⃣ /Lobby Use This To Create A New Game Room For Your Friends\n"
+    Guide += "2️⃣ /Join Type This To Enter The Active Game Lobby\n"
+    Guide += "3️⃣ /Start The Host Can Use This To Begin The Match After Everyone Joins\n"
+    Guide += "4️⃣ /Members Check The List Of All Players Currently In The Lobby\n"
+    Guide += "5️⃣ /Cancel Stop The Ongoing Match Immediately If Needed\n"
+    Guide += "6️⃣ /Reset Fully Clear All Data And Start Everything From Zero\n\n"
     
-    Guide += "📍 Active Match Gameplay Commands\n\n"
+    Guide += "📍 Match Play Commands\n\n"
     
-    Guide += "7️⃣ /Next Fetch The Next Secret Word Directly Inside Your Private Messaging Inbox\n"
-    Guide += "8️⃣ /Clue Clue Givers Must Use This Command In Private DM To Forward Hints To Group\n"
-    Guide += "9️⃣ /Hint Generate A Structural Clue Showing The First Letter And Word Length\n"
-    Guide += "🔟 /Turn Check Which Team Is Currently Playing And Who Is The Designated Clue Giver\n"
-    Guide += "🔢 /Team View The Official Player Distribution Roster For Team Alpha And Bravo\n"
-    Guide += "📊 /Status View The Real Time Match Scoreboard And Leadership Analysis Report\n\n"
+    Guide += "7️⃣ /Round Get Your New Secret Word Inside Your Private DM\n"
+    Guide += "8️⃣ /Clue The Clue Giver Must Send Hints To The Bot DM Using This\n"
+    Guide += "9️⃣ /Hint Get A Small Clue If The Word Is Too Hard To Guess\n"
+    Guide += "🔟 /Turn Find Out If It Is The Turn Of Team Bjp Or Team Congress\n"
+    Guide += "🔢 /Team See Who Is In Team Bjp And Who Is In Team Congress\n"
+    Guide += "📊 /Status Check The Live Score To See Which Team Is Winning\n\n"
     
-    Guide += "📍 Career Performance And Statistics Tracking\n\n"
+    Guide += "📍 Your Records\n\n"
     
-    Guide += "👤 /Profile Access Your Personal Gaming Record Career Points And Win Rate Status\n"
-    Guide += "🏆 /Leaderboard Witness The Global Hall Of Fame Ranking Of The Top Ten Legends\n\n"
+    Guide += "👤 /Profile View Your Personal Points And Total Game Wins\n"
+    Guide += "🏆 /Leaderboard See The Top Ranked Players On The Global Board\n\n"
     
-    Guide += "📝 Official Important Note For All Participants\n"
-    Guide += "All Clue Givers Must Ensure They Have Started The Bot In Private DM To Receive Words\n"
-    Guide += "Submit Your Hints Using The Clue Command Within The Bot DM To Avoid Penalties\n"
-    Guide += "The First Correct Guess In The Group Chat Without Any Command Wins Ten Points\n\n"
+    Guide += "📝 Important Rules For New Players\n"
+    Guide += "The Clue Giver Must Start The Bot In Private DM First\n"
+    Guide += "Always Send Your Hints Inside The Private DM Of The Bot\n"
+    Guide += "The First Person To Type The Correct Word In Group Wins Ten Points\n\n"
     
-    Guide += "🔥 Use These Commands Strategically To Dominate The Taboo Arena Today 🔥"
+    Guide += "🔥 Start Playing Now And Lead Your Team To Victory 🔥"
     
     await update.message.reply_text(Guide)
 
 async def Lobby_Handler(update: Update, context):
     # Security Check To Ensure Lobby Is Created Only In Group Chats
     if update.effective_chat.type == 'private':
-        Dm_Error = "🛑 Access Denied You Cannot Create A Gaming Lobby Inside Private Messages\n\n"
-        Dm_Error += "Please Add This Bot To A Group Chat To Start A New Match Session\n"
-        Dm_Error += "Lobbies Are Designed For Multiplayer Experience Only In Public Groups\n"
-        Dm_Error += "Try Again By Using This Command Inside Your Preferred Telegram Group"
+        Dm_Error = "🛑 Access Denied You Cannot Create A Game Lobby In Private Messages\n\n"
+        Dm_Error += "Please Add This Bot To A Group To Start A New Match\n"
+        Dm_Error += "Lobbies Are Only For Multiplayer Games In Groups\n"
+        Dm_Error += "Please Try This Command Again Inside A Telegram Group"
         return await update.message.reply_text(Dm_Error)
 
-    # Check If A Lobby Is Already Active In The Memory
+    # Check If A Lobby Is Already Active
     if Lobby_Data["Is_Open"]: 
-        Active_Error = "⚠️ Warning An Active Gaming Lobby Is Already In Operation Currently\n\n"
-        Active_Error += "Multiple Lobbies Cannot Run Simultaneously In The Same Session\n"
-        Active_Error += "Please Wait For The Current Match To Finish Or Use The Reset Command\n"
-        Active_Error += "Current Host Is Still Managing The Existing Players Inside The Room"
+        Active_Error = "⚠️ Warning A Game Lobby Is Already Open Right Now\n\n"
+        Active_Error += "You Cannot Start Two Lobbies At The Same Time\n"
+        Active_Error += "Please Wait For The Match To Finish Or Use The Reset Command\n"
+        Active_Error += "The Current Host Is Still Managing The Players In The Room"
         return await update.message.reply_text(Active_Error)
 
     # Initialize The Lobby Data With Creator Information
-    user = update.message.from_user
+    User = update.message.from_user
     Lobby_Data.update({
         "Is_Open": True, 
-        "Creator_Id": user.id, 
-        "Players": [user.id], 
-        "Player_Names": {user.id: user.first_name}
+        "Creator_Id": User.id, 
+        "Players": [User.id], 
+        "Player_Names": {User.id: User.first_name}
     })
     
-    # Large Descriptive Invitation Message
-    Invite = "🎊 A New Professional Taboo Gaming Lobby Has Been Successfully Created 🎊\n\n"
-    Invite += "👤 Host Name " + user.first_name + "\n"
-    Invite += "📊 Current Status Waiting For Competitive Players To Join The Session\n\n"
+    # Simple Invitation Message
+    Invite = "🎊 A New Taboo Game Lobby Has Been Successfully Created 🎊\n\n"
+    Invite += "👤 Host Name: " + User.first_name + "\n"
+    Invite += "📊 Status Waiting For Players To Join The Session\n\n"
     
-    Invite += "📝 Instructions For All Aspiring Joining Participants Below\n\n"
-    Invite += "👉 Type /Join To Enter Into This Gaming Room Right Now\n"
-    Invite += "👉 Type /Start Once All Of Your Friends And Participants Are Present\n"
-    Invite += "👉 Note A Minimum Of Two Players Is Required For Match Activation\n\n"
+    Invite += "📝 How To Join The Game Below\n\n"
+    Invite += "👉 Type /Join To Enter This Game Room Right Now\n"
+    Invite += "👉 Type /Start Once All Your Friends Are Ready\n"
+    Invite += "👉 Note You Need At Least Two Players To Start The Match\n\n"
     
-    Invite += "🔥 Get Ready For An Intense Battle Of Words And Quick Thinking\n"
-    Invite += "🌟 Only The Smartest Players Will Reach The Top Of The Leaderboard\n"
-    Invite += "📢 Share This Group Link With Your Friends To Fill The Slots Quickly"
+    Invite += "🔥 Get Ready For A Fun Battle Of Words And Speed\n"
+    Invite += "🌟 Show Everyone That You Are The Smartest Player Here\n"
+    Invite += "📢 Tell Your Friends To Join Quickly To Start The Fun"
     
     await update.message.reply_text(Invite)
 
 async def Join_Handler(update: Update, context):
-    user = update.message.from_user
+    User = update.message.from_user
     
     # Check If Lobby Is Actually Open
     if not Lobby_Data["Is_Open"]: 
-        No_Lobby = "❌ Error No Active Gaming Lobby Found To Join At This Moment\n\n"
-        No_Lobby += "Please Ask An Administrator Or A Friend To Create A New Lobby\n"
-        No_Lobby += "You Can Use The Lobby Command To Host Your Own Session Right Now\n"
-        No_Lobby += "Make Sure You Are In The Correct Group To Participate In The Match"
+        No_Lobby = "❌ Error No Active Game Lobby Found To Join Right Now\n\n"
+        No_Lobby += "Please Ask A Friend To Create A New Lobby First\n"
+        No_Lobby += "You Can Use The Lobby Command To Start Your Own Game Room\n"
+        No_Lobby += "Make Sure You Are In The Group To Play The Match Together"
         return await update.message.reply_text(No_Lobby)
 
     # Check If Player Is Already Inside The Lobby
-    if user.id in Lobby_Data["Players"]: 
-        Already_In = "ℹ️ Information You Are Already A Registered Member Of This Active Lobby\n\n"
-        Already_In += "Please Wait Patiently For The Host To Start The Official Match\n"
-        Already_In += "You Cannot Join The Same Gaming Session Multiple Times In A Row\n"
-        Already_In += "Check The Current Player List To Confirm Your Successful Entry Status"
+    if User.id in Lobby_Data["Players"]: 
+        Already_In = "ℹ️ Info You Are Already A Member Of This Game Lobby\n\n"
+        Already_In += "Please Wait For The Host To Start The Official Match\n"
+        Already_In += "You Cannot Join The Same Game More Than Once\n"
+        Already_In += "Check The Member List To See Your Name In The Roster"
         return await update.message.reply_text(Already_In)
 
     # Security Check To Verify If User Has Started The Bot In Private DM
     try:
-        # We Try To Send A Tiny Ghost Message Or Just Use A Dummy Call
-        await context.bot.send_chat_action(chat_id=user.id, action="typing")
+        # Checking If Bot Can Communicate With User
+        await context.bot.send_chat_action(chat_id=User.id, action="typing")
     except Exception:
         # If Failed It Means The User Has Not Started The Bot In DM
-        Dm_Needed = "⚠️ Action Required You Must Start The Bot In Private DM First ⚠️\n\n"
-        Dm_Needed += "Dear Participant " + user.first_name + " Our System Cannot Send You Secret Words\n"
-        Dm_Needed += "Please Click On The Bot Username And Press The Start Button Privately\n"
-        Dm_Needed += "Once You Have Started The Bot In DM Come Back Here And Type Join Again\n"
-        Dm_Needed += "This Security Step Is Mandatory To Receive Your Hidden Taboo Words Later"
+        Dm_Needed = "⚠️ Action Required Please Start The Bot In Private DM First ⚠️\n\n"
+        Dm_Needed += "Hello " + User.first_name + " The System Cannot Send You Secret Words Yet\n"
+        Dm_Needed += "Please Click On The Bot Name And Press The Start Button In Private\n"
+        Dm_Needed += "After Starting The Bot Come Back Here And Type Join Again\n"
+        Dm_Needed += "This Step Is Required So You Can Receive Your Hidden Words Later"
         return await update.message.reply_text(Dm_Needed)
 
     # If All Checks Pass Add The User To The Lobby
-    Lobby_Data["Players"].append(user.id)
-    Lobby_Data["Player_Names"][user.id] = user.first_name
+    Lobby_Data["Players"].append(User.id)
+    Lobby_Data["Player_Names"][User.id] = User.first_name
     
-    Success_Msg = "✅ " + user.first_name + " Has Successfully Joined The Competitive Game Lobby\n\n"
-    Success_Msg += "📊 Current Total Participant Count Is Now " + str(len(Lobby_Data["Players"])) + " Active Players\n"
-    Success_Msg += "🕒 We Are Still Waiting For More Friends To Join This Exciting Fun Session\n\n"
-    Success_Msg += "📢 Invite Your Group Members By Sharing The Group Link Immediately\n"
-    Success_Msg += "🚀 The Match Will Be Ready To Launch Once All Slots Are Fully Occupied\n"
-    Success_Msg += "💎 Prepare Your Mind For The Most Challenging Taboo Experience Today"
+    Success_Msg = "✅ " + User.first_name + " Has Successfully Joined The Game Lobby\n\n"
+    Success_Msg += "📊 Current Total Player Count Is Now " + str(len(Lobby_Data["Players"])) + " Active Members\n"
+    Success_Msg += "🕒 We Are Still Waiting For More Friends To Join The Fun\n\n"
+    Success_Msg += "📢 Invite Your Group Members To Join The Game Right Now\n"
+    Success_Msg += "🚀 The Match Will Be Ready To Start Once Everyone Is Here\n"
+    Success_Msg += "💎 Get Ready To Play The Most Fun Taboo Game Today"
     
     await update.message.reply_text(Success_Msg)
 
 async def Start_Handler(update: Update, context):
     # Check If The Match Is Already Running Or Lobby Is Not Created
     if not Lobby_Data["Is_Open"]:
-        return await update.message.reply_text("❌ Error There Is No Active Lobby Available To Start At This Moment")
+        return await update.message.reply_text("❌ Error There Is No Active Lobby To Start At This Moment")
 
     # Only The Person Who Created The Lobby Can Start The Match
     if update.message.from_user.id != Lobby_Data["Creator_Id"]:
-        No_Permission = "🚫 Permission Denied Access To Start The Match Is Restricted Only To The Host\n\n"
-        No_Permission += "Please Ask The Lobby Creator " + Lobby_Data["Player_Names"][Lobby_Data["Creator_Id"]] + " To Launch The Game\n"
-        No_Permission += "Only The Official Creator Of This Session Can Initialize The Team Formation Process\n"
-        No_Permission += "This Rule Ensures That All Participants Are Ready Before The Battle Begins Today"
+        No_Permission = "🚫 Access Denied Only The Host Can Start The Match 🚫\n\n"
+        No_Permission += "Please Ask The Host " + Lobby_Data["Player_Names"][Lobby_Data["Creator_Id"]] + " To Start The Game\n"
+        No_Permission += "Only The Person Who Created This Lobby Can Start Forming Teams\n"
+        No_Permission += "This Rule Makes Sure Everyone Is Ready Before The Game Begins Today"
         return await update.message.reply_text(No_Permission)
 
     # Verification For Minimum Players
     Total_Players = len(Lobby_Data["Players"])
     if Total_Players < 2:
-        return await update.message.reply_text("⚠️ Insufficient Participants A Minimum Of Two Players Is Required To Form Teams")
+        return await update.message.reply_text("⚠️ Not Enough Players You Need At Least Two Players To Make Teams")
 
-    # Team Balancing Logic To Ensure Equal Players In Both Teams
+    # Team Balancing Logic
     if Total_Players % 2 != 0:
-        Balancing_Error = "⚖️ Team Balancing Warning The Number Of Players Must Be Even For A Fair Match\n\n"
-        Balancing_Error += "Current Total Player Count Is " + str(Total_Players) + " Which Leads To Unequal Team Distribution\n"
-        Balancing_Error += "Please Ask One More Friend To Use The Join Command To Balance The Competition\n"
-        Balancing_Error += "We Believe In Fair Play And Equal Opportunity For Both Team A And Team B Members\n"
-        Balancing_Error += "Once An Even Number Of Participants Is Reached You Can Proceed To Start The Game"
+        Balancing_Error = "⚖️ Team Balance Warning You Need An Even Number Of Players For A Fair Match\n\n"
+        Balancing_Error += "Current Total Player Count Is " + str(Total_Players) + " Which Means Teams Will Be Unequal\n"
+        Balancing_Error += "Please Ask One More Friend To Join So Both Teams Have Equal Players\n"
+        Balancing_Error += "We Want Fair Play For Both Team Bjp And Team Congress Members\n"
+        Balancing_Error += "Once The Player Count Is Even You Can Start The Game Easily"
         return await update.message.reply_text(Balancing_Error)
 
-    # Shuffle And Divide Teams Equal Distribution
+    # Shuffle And Divide Teams Into Bjp And Congress
     random.shuffle(Lobby_Data["Players"])
     mid = Total_Players // 2
     Game_State.update({
         "Is_Running": True, 
-        "Team_A": Lobby_Data["Players"][:mid], 
-        "Team_B": Lobby_Data["Players"][mid:], 
-        "Scores": {"A": 0, "B": 0},
-        "Current_Turn_Team": "A"
+        "Team_Bjp": Lobby_Data["Players"][:mid], 
+        "Team_Congress": Lobby_Data["Players"][mid:], 
+        "Scores": {"Bjp": 0, "Congress": 0},
+        "Current_Turn_Team": "Bjp"
     })
     Lobby_Data["Is_Open"] = False
     
-    # Grand Announcement Of Team Formation
-    Battle_Msg = "⚔️ The Grand Taboo Battle Has Officially Commenced And Teams Are Now Locked ⚔️\n\n"
+    # Simple Announcement Of Team Formation
+    Battle_Msg = "⚔️ The Taboo Battle Has Started And Teams Are Now Ready ⚔️\n\n"
     
-    Battle_Msg += "🟦 Roster Members Of Team Alpha\n"
-    for p_id in Game_State["Team_A"]: 
+    Battle_Msg += "🪷 Participate Members Of Team BJP:\n"
+    for p_id in Game_State["Team_Bjp"]: 
         Battle_Msg += "✨ " + Lobby_Data["Player_Names"][p_id] + "\n"
     
-    Battle_Msg += "\n🟥 Roster Members Of Team Bravo\n"
-    for p_id in Game_State["Team_B"]: 
+    Battle_Msg += "\n🪬 Participate Members Of Team Congress:\n"
+    for p_id in Game_State["Team_Congress"]: 
         Battle_Msg += "✨ " + Lobby_Data["Player_Names"][p_id] + "\n"
     
-    Battle_Msg += "\n📝 Match Instructions For Both Competitive Teams Below\n\n"
-    Battle_Msg += "👉 We Are Starting The First Round With Team Alpha Members Now\n"
-    Battle_Msg += "👉 Please Type The Next Command To Generate Your First Secret Word Inbox\n"
-    Battle_Msg += "👉 Clue Givers Must Check Their Private DM Before Giving Any Hints Today\n\n"
+    Battle_Msg += "\n📝 Simple Match Instructions For Both Teams Below\n\n"
+    Battle_Msg += "👉 We Are Starting The First Round With Team Bjp Now\n"
+    Battle_Msg += "👉 Please Type The Round Command To Get Your First Secret Word In DM\n"
+    Battle_Msg += "👉 Clue Givers Must Check Their Private DM Before Giving Hints In The Group\n\n"
     
-    Battle_Msg += "🔥 May The Smartest And Quickest Team Claim The Final Victory Trophy 🔥"
+    Battle_Msg += "🔥 May The Smartest And Fastest Team Win The Game Today 🔥"
     
     await update.message.reply_text(Battle_Msg)
 
 async def Next_Round_Handler(update: Update, context):
+    # Ensure Global Declaration Is At The Absolute Top To Avoid Errors
+    global Game_State, Lobby_Data
+
     if not Game_State["Is_Running"]: 
-        Invalid_Match = "🚫 Operation Denied There Is No Active Match Currently Running In This Session\n\n"
-        Invalid_Match += "Please Ensure That You Have Created A Lobby And Started The Game Properly\n"
-        Invalid_Match += "Use The Lobby Command To Host A New Room And Invite Your Competitive Friends\n"
-        Invalid_Match += "Once The Teams Are Formed You Can Use This Command To Begin The Rounds"
+        Invalid_Match = "🚫 Error There Is No Active Match Running Right Now\n\n"
+        Invalid_Match += "Please Make Sure You Have Created A Lobby And Started The Game\n"
+        Invalid_Match += "Use The Lobby Command To Host A New Room And Join Your Friends\n"
+        Invalid_Match += "Once Teams Are Ready You Can Use This Command To Start The Round"
         return await update.message.reply_text(Invalid_Match)
 
     if Game_State["Round_Active"]:
-        Busy_Error = "⚠️ Warning An Active Round Is Already Progressing In This Group Right Now\n\n"
-        Busy_Error += "You Cannot Fetch A New Word Until The Current Timer Expires Or Someone Guesses Right\n"
-        Busy_Error += "Please Focus On The Current Secret Word And Provide Accurate Clues To Your Team\n"
-        Busy_Error += "Wait For The Current Clue Giver To Finish Their Turn Before Requesting The Next One"
+        Busy_Error = "⚠️ Warning A Round Is Already Going On In This Group\n\n"
+        Busy_Error += "You Cannot Get A New Word Until The Current Timer Ends\n"
+        Busy_Error += "Please Focus On The Current Secret Word And Give Good Hints\n"
+        Busy_Error += "Wait For The Current Turn To Finish Before Starting The Next One"
         return await update.message.reply_text(Busy_Error)
 
+    # Dynamic Team Key For Bjp And Congress
     Team_Key = "Team_" + Game_State["Current_Turn_Team"]
     Current_Team_Roster = Game_State[Team_Key]
     Game_State["Clue_Giver"] = random.choice(Current_Team_Roster)
     
+    # Pick A Random Word
     Word_Obj = random.choice(Word_Library)
     
-    # Fixed Lower Case Methods Here
     Game_State.update({
         "Current_Word": Word_Obj["Word"],
         "Taboo_Words": [W.lower() for W in Word_Obj["Taboo"]],
@@ -478,79 +491,83 @@ async def Next_Round_Handler(update: Update, context):
     })
 
     try:
-        Dm_Msg = "🤫 Your Exclusive Secret Taboo Word Details Have Arrived Safely 🤫\n\n"
-        Dm_Msg += "🎯 Your Primary Secret Word To Clue Is " + Word_Obj['Word'].upper() + "\n\n"
-        Dm_Msg += "🚫 Strictly Restricted Taboo Words Mentioning These Will End Your Turn\n"
+        # Simple Private Message For Clue Giver
+        Dm_Msg = "🤫 Your Secret Taboo Word Details Are Here 🤫\n\n"
+        Dm_Msg += "🎯 Your Secret Word Is: " + Word_Obj['Word'].upper() + "\n\n"
+        Dm_Msg += "🚫 Do Not Use These Taboo Words Or Your Turn Will End\n"
         for W in Word_Obj['Taboo']: Dm_Msg += "✨ " + W + "\n"
-        Dm_Msg += "\n📝 Instructions Use The Clue Command In This Private DM To Send Hints To Group\n"
-        Dm_Msg += "🚀 Example Type Clue It Is A Very Delicious Indian Fried Snack\n"
-        Dm_Msg += "🔥 Good Luck Champion Try To Make Your Team Guess As Fast As Possible"
+        Dm_Msg += "\n📝 Instructions Use The Clue Command In This DM To Send Hints\n"
+        Dm_Msg += "🚀 Example Type Clue It Is A Very Famous Indian Snack\n"
+        Dm_Msg += "🔥 Good Luck Make Your Team Guess As Fast As Possible"
         
         await context.bot.send_message(chat_id=Game_State["Clue_Giver"], text=Dm_Msg)
         
-        Announce = "🔔 A Fresh Exciting Round Has Officially Commenced For Everyone 🔔\n\n"
-        Announce += "👤 Nominated Clue Giver For This Round " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + "\n"
-        Announce += "🚩 Currently Playing Active Team Team " + Game_State["Current_Turn_Team"] + "\n\n"
-        Announce += "📥 The Secret Information Has Been Delivered To The Clue Giver Private Inbox\n"
-        Announce += "⏳ The Professional Game Timer Of One Hundred Twenty Seconds Is Now Active\n"
-        Announce += "📢 All Team Members Should Prepare To Type Their Guesses Inside This Group\n"
-        Announce += "🌟 Use Your Maximum Intelligence To Win Ten Points For Your Respective Team"
+        # Simple Group Announcement
+        Announce = "🔔 A New Exciting Round Has Started For Everyone 🔔\n\n"
+        Announce += "👤 Clue Giver For This Round Is " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + "\n"
+        Announce += "🚩 Playing Team Is Team " + Game_State["Current_Turn_Team"] + "\n\n"
+        Announce += "📥 The Secret Word Has Been Sent To The Clue Giver Private DM\n"
+        Announce += "⏳ The Game Timer Of Five Minutes Is Now Active\n"
+        Announce += "📢 Team Members Should Start Typing Their Guesses In This Group\n"
+        Announce += "🌟 Use Your Brain To Win Ten Points For Your Team"
         await update.message.reply_text(Announce)
         
+        # Start The 5 Minute Timer Task
         asyncio.create_task(Manage_Round_Timer(update.effective_chat.id, context, Word_Obj["Word"]))
         
     except Exception:
-        Fail_Msg = "❌ Critical Communication Error Could Not Deliver The Secret Message ❌\n\n"
-        Fail_Msg += "It Seems The Nominated Clue Giver " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + " Has Blocked The Bot\n"
-        Fail_Msg += "Please Ensure That You Have Started The Bot In Private DM To Receive Words\n"
-        Fail_Msg += "We Are Forcing This Round To Reset So Please Use The Next Command Again"
+        # Error If Bot Cannot DM The Player
+        Fail_Msg = "❌ Error Could Not Deliver The Secret Message ❌\n\n"
+        Fail_Msg += "It Seems The Player " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + " Has Not Started The Bot\n"
+        Fail_Msg += "Please Make Sure You Have Started The Bot In Private DM To Get Words\n"
+        Fail_Msg += "This Round Is Being Cancelled Please Try The Command Again"
         Game_State["Round_Active"] = False
         await update.message.reply_text(Fail_Msg)
-
+        
 # 1. New Handler For Receiving Clues In Private DM
 async def Clue_Submit_Handler(update: Update, context):
     # Ensure This Command Is Only Used Inside Private Chat
     if update.effective_chat.type != 'private':
-        return # Silent Return To Prevent Group Spam
+        return 
 
     User = update.message.from_user
     
     # Check If The Round Is Active And User Is The Assigned Clue Giver
     if not Game_State["Round_Active"] or User.id != Game_State["Clue_Giver"]:
-        Error_Dm = "🚫 Access Denied You Are Not Authorized To Submit Clues At This Moment\n\n"
-        Error_Dm += "Please Wait For Your Official Turn To Become The Designated Clue Giver\n"
-        Error_Dm += "Only The Player Who Received The Secret Word Can Use This Command\n"
-        Error_Dm += "Current Match Status And Turn Information Is Available In The Group Chat"
+        Error_Dm = "🚫 Access Denied You Cannot Submit Clues Right Now\n\n"
+        Error_Dm += "Please Wait For Your Official Turn To Give Hints To Your Team\n"
+        Error_Dm += "Only The Player Who Got The Secret Word Can Use This Command\n"
+        Error_Dm += "Check The Group Chat To See Whose Turn Is Going On Currently"
         return await update.message.reply_text(Error_Dm)
 
     # Validate If Clue Content Is Provided
     Clue_Text = " ".join(context.args)
     if not Clue_Text:
-        Usage_Dm = "📝 Instruction Please Provide Your Clue Text After The Command\n\n"
-        Usage_Dm += "Example Usage Format Type Clue It Is Found Inside A Deep Jungle\n"
-        Usage_Dm += "Your Clue Will Be Automatically Forwarded To The Group For Everyone\n"
-        Usage_Dm += "Ensure Your Description Is Accurate Without Using Any Forbidden Words"
+        Usage_Dm = "📝 Instruction Please Type Your Hint After The Command\n\n"
+        Usage_Dm += "Example Usage Format Type Clue It Is Very Famous In India\n"
+        Usage_Dm += "Your Hint Will Be Sent To The Group Automatically For Everyone\n"
+        Usage_Dm += "Make Sure Your Description Does Not Use Any Forbidden Words"
         return await update.message.reply_text(Usage_Dm)
 
     # Check For Forbidden Taboo Words Inside The Submitted Clue
     for Forbidden in Game_State["Taboo_Words"]:
         if Forbidden in Clue_Text.lower():
-            Violation_Dm = "⚠️ Taboo Violation Detected Your Clue Contains A Restricted Word\n\n"
-            Violation_Dm += "Forbidden Word Found " + Forbidden.upper() + "\n"
-            Violation_Dm += "Please Rewrite Your Description Carefully Without Using Any Taboo Terms\n"
-            Violation_Dm += "Repeated Violations Might Lead To Automatic Turn Cancellation So Be Careful"
+            Violation_Dm = "⚠️ Forbidden Word Found Your Hint Has A Restricted Word\n\n"
+            Violation_Dm += "Taboo Word Used " + Forbidden.upper() + "\n"
+            Violation_Dm += "Please Write Your Hint Again Without Using This Word\n"
+            Violation_Dm += "Be Careful Because Using Forbidden Words Is Against The Rules"
             return await update.message.reply_text(Violation_Dm)
 
     # Forward The Clue To The Main Group Chat
     Group_Id = context.bot_data.get("Current_Group_Id")
     if Group_Id:
-        Forward_Msg = "📣 Attention Members An Official Hint Has Been Received From The Clue Giver 📣\n\n"
-        Forward_Msg += "💡 Message Description " + Clue_Text.upper() + "\n\n"
-        Forward_Msg += "🔎 All Active Team Members Should Analyze This Hint And Type Their Guesses\n"
-        Forward_Msg += "🕒 The Clock Is Ticking Fast So Provide Your Best Possible Answers Now\n"
-        Forward_Msg += "🏆 First Correct Guess Will Win Ten Points For Your Respective Team"
+        Forward_Msg = "📣 Attention Everyone A New Hint Has Arrived From The Clue Giver 📣\n\n"
+        Forward_Msg += "💡 Hint Message: " + Clue_Text.upper() + "\n\n"
+        Forward_Msg += "🔎 All Players Should Read This Hint And Type Their Guesses Now\n"
+        Forward_Msg += "🕒 The Timer Is Running Fast So Give Your Best Answers Quickly\n"
+        Forward_Msg += "🏆 The First Person To Guess Correct Wins Ten Points For Their Team"
         await context.bot.send_message(chat_id=Group_Id, text=Forward_Msg)
-        await update.message.reply_text("✅ Success Your Clue Has Been Successfully Delivered To The Group Chat")
+        await update.message.reply_text("✅ Success Your Hint Has Been Sent To The Group Chat Successfully")
 
 # 2. Updated Referee Logic For Handling Guesses In Group Chat
 async def Referee_Logic(update: Update, context):
@@ -570,15 +587,17 @@ async def Referee_Logic(update: Update, context):
             if Forbidden in Text_Guess:
                 Game_State["Round_Active"] = False
                 Game_State["Current_Word"] = None
-                Old_Team = Game_State["Current_Turn_Team"]
-                Game_State["Current_Turn_Team"] = "B" if Old_Team == "A" else "A"
                 
-                Penalty_Msg = "🚫 Major Penalty Detected The Clue Giver Spoke A Taboo Word In Public 🚫\n\n"
-                Penalty_Msg += "Violator Name " + User.first_name + "\n"
-                Penalty_Msg += "Restricted Word Used " + Forbidden.upper() + "\n\n"
-                Penalty_Msg += "This Round Is Now Terminated And The Turn Has Been Switched Immediately\n"
-                Penalty_Msg += "Please Type The Next Command To Start A New Round For The Opposing Team\n"
-                Penalty_Msg += "Follow The Rules To Maintain Fair Competition Within Your Gaming Session"
+                # Turn Shift Logic Between Bjp And Congress
+                Old_Team = Game_State["Current_Turn_Team"]
+                Game_State["Current_Turn_Team"] = "Congress" if Old_Team == "Bjp" else "Bjp"
+                
+                Penalty_Msg = "🚫 Major Penalty The Clue Giver Used A Forbidden Word In Public 🚫\n\n"
+                Penalty_Msg += "Player Name " + User.first_name + "\n"
+                Penalty_Msg += "Forbidden Word Used " + Forbidden.upper() + "\n\n"
+                Penalty_Msg += "This Round Has Ended And The Turn Has Changed To The Other Team\n"
+                Penalty_Msg += "Please Type The Round Command To Start A New Turn For Your Team\n"
+                Penalty_Msg += "Please Follow The Rules To Keep The Game Fair For Everyone"
                 await update.message.reply_text(Penalty_Msg)
                 return
     else:
@@ -591,29 +610,29 @@ async def Referee_Logic(update: Update, context):
             # Update Statistics In Database
             Update_Stats(User.id, User.first_name, pts=10)
             
-            Victory_Msg = "🎊 Fantastic Achievement The Secret Word Has Been Successfully Guessed 🎊\n\n"
-            Victory_Msg += "👑 Winning Participant Name " + User.first_name + "\n"
-            Victory_Msg += "🎯 Correct Answer Revealed " + Game_State["Current_Word"].upper() + "\n"
-            Victory_Msg += "📈 Total Ten Bonus Points Have Been Awarded To Team " + Winning_Team + "\n\n"
-            Victory_Msg += "You Are Showing Great Teamwork And Incredible Thinking Skills Today\n"
-            Victory_Msg += "Please Type The Next Command To Proceed To The Following Exciting Round\n"
-            Victory_Msg += "Keep Up The Momentum To Secure Your Spot On The Leaderboard"
+            Victory_Msg = "🎊 Great Job The Secret Word Has Been Guessed Successfully 🎊\n\n"
+            Victory_Msg += "👑 Winner Name " + User.first_name + "\n"
+            Victory_Msg += "🎯 Correct Answer Was " + Game_State["Current_Word"].upper() + "\n"
+            Victory_Msg += "📈 Ten Points Have Been Awarded To Team " + Winning_Team + "\n\n"
+            Victory_Msg += "You Are Doing Great Work And Thinking Very Fast Today\n"
+            Victory_Msg += "Please Type The Round Command To Start The Next Exciting Round\n"
+            Victory_Msg += "Keep Playing Well To Reach The Top Of The Leaderboard"
             
             Game_State["Current_Word"] = None
             await update.message.reply_text(Victory_Msg)
 
 async def Profile_Handler(update: Update, context):
-    # Fetch Player Statistics From The Central Database
+    # Fetch Player Statistics From The Database
     Cursor.execute("Select Points, Wins, Games_Played From Players Where User_Id = ?", (update.message.from_user.id,))
     Data = Cursor.fetchone()
     
-    # Check If The Player Has Any Recorded History
+    # Check If The Player Has Any Record
     if not Data: 
-        No_Record = "🔍 Discovery Error No Statistics Found For This Profile In Our Central Database\n\n"
-        No_Record += "It Seems You Have Not Participated In Any Official Taboo Matches Yet\n"
-        No_Record += "Please Join An Active Lobby And Complete A Match To Generate Your Gaming Record\n"
-        No_Record += "Your Career Progress Will Be Automatically Tracked Once You Start Scoring Points\n"
-        No_Record += "We Are Looking Forward To Seeing Your Name On Our Competitive Leaderboard Soon"
+        No_Record = "🔍 No Record Found For Your Profile In Our Database\n\n"
+        No_Record += "It Looks Like You Have Not Played Any Taboo Matches Yet\n"
+        No_Record += "Please Join A Lobby And Play A Match To Create Your Record\n"
+        No_Record += "Your Progress Will Be Tracked Once You Start Winning Points\n"
+        No_Record += "We Hope To See Your Name On Our Leaderboard Very Soon"
         return await update.message.reply_text(No_Record)
     
     # Extract Values For Calculation
@@ -621,60 +640,60 @@ async def Profile_Handler(update: Update, context):
     Wins = Data[1]
     Total_Games = Data[2]
     
-    # Calculate Win Rate Percentage For Professional Look
+    # Calculate Win Rate Percentage
     Win_Rate = (Wins / Total_Games) * 100 if Total_Games > 0 else 0
     
-    # Determine Player Tier Based On Career Points
-    Player_Tier = "Beginner Associate"
-    if Points > 500: Player_Tier = "Elite Strategist"
-    if Points > 1500: Player_Tier = "Master Wordsmith"
-    if Points > 5000: Player_Tier = "Grand Taboo Champion"
+    # Determine Player Level Based On Points
+    Player_Tier = "New Player"
+    if Points > 500: Player_Tier = "Smart Player"
+    if Points > 1500: Player_Tier = "Expert Master"
+    if Points > 5000: Player_Tier = "Grand Champion"
 
-    # Constructing The Highly Detailed Profile Report
-    Profile_Msg = "🛡️ Official Participant Gaming Profile Statistics Detailed Report 🛡️\n\n"
+    # Constructing The Simple Profile Report
+    Profile_Msg = "🛡️ Your Official Gaming Profile Statistics 🛡️\n\n"
     
-    Profile_Msg += "👤 Participant Identity Name " + update.message.from_user.first_name + "\n"
-    Profile_Msg += "🎖️ Current Professional Tier " + Player_Tier + "\n\n"
+    Profile_Msg += "👤 Player Name: " + update.message.from_user.first_name + "\n"
+    Profile_Msg += "🎖️ Current Level Status: " + Player_Tier + "\n\n"
     
-    Profile_Msg += "📊 Detailed Performance Analytics Below\n\n"
+    Profile_Msg += "📊 Your Performance Details Below\n\n"
     
-    Profile_Msg += "💎 Total Career Points Accumulated " + str(Points) + " Points\n"
-    Profile_Msg += "🏆 Total Official Match Victories Recorded " + str(Wins) + " Wins\n"
-    Profile_Msg += "🎮 Total Competitive Games Played " + str(Total_Games) + " Matches\n"
-    Profile_Msg += "📈 Overall Match Winning Probability " + str(round(Win_Rate, 2)) + " Percent\n\n"
+    Profile_Msg += "💎 Total Career Points Scored: " + str(Points) + " Points\n"
+    Profile_Msg += "🏆 Total Match Wins Recorded: " + str(Wins) + " Wins\n"
+    Profile_Msg += "🎮 Total Games Played: " + str(Total_Games) + " Matches\n"
+    Profile_Msg += "📈 Overall Winning Chance: " + str(round(Win_Rate, 2)) + " Percent\n\n"
     
-    Profile_Msg += "📝 Management Notes And Career Advice\n"
-    Profile_Msg += "You Are Currently Ranked Within The " + Player_Tier + " Category Based On Your Skills\n"
-    Profile_Msg += "Continue Participating In More Rounds To Improve Your Overall Winning Percentage\n"
-    Profile_Msg += "Winning Consecutive Rounds Will Help You Reach The Grand Taboo Champion Status Faster\n\n"
+    Profile_Msg += "📝 Helpful Advice For You\n"
+    Profile_Msg += "You Are Now In The " + Player_Tier + " Category Based On Your Performance\n"
+    Profile_Msg += "Play More Rounds Regularly To Improve Your Winning Percentage\n"
+    Profile_Msg += "Keep Winning To Reach The Grand Champion Status Quickly\n\n"
     
-    Profile_Msg += "🌟 Keep Playing Regularly To Secure Your Legacy In Our Global Hall Of Fame 🌟"
+    Profile_Msg += "🌟 Keep Playing To Become A Legend In Our Global Hall Of Fame 🌟"
     
     await update.message.reply_text(Profile_Msg)
 
 async def Leaderboard_Handler(update: Update, context):
-    # Fetch Top Ten Players Instead Of Just Five For A More Competitive Board
+    # Fetch Top Ten Players For The Board
     Cursor.execute("Select Name, Points From Players Order By Points Desc Limit 10")
     Ranks = Cursor.fetchall()
     
-    # Check If The Leaderboard Database Has Any Entries
+    # Check If The Leaderboard Has Any Data
     if not Ranks:
-        Empty_Board = "📭 Database Alert The Global Leaderboard Is Currently Empty\n\n"
-        Empty_Board += "It Seems No Players Have Scored Any Points In The Current Season Yet\n"
-        Empty_Board += "Be The First Participant To Win A Match And Claim The Top Position Here\n"
-        Empty_Board += "Start A New Game Lobby Now To Begin Your Journey Towards Becoming A Legend"
+        Empty_Board = "📭 Alert The Global Leaderboard Is Currently Empty\n\n"
+        Empty_Board += "It Seems No Players Have Scored Any Points In This Season Yet\n"
+        Empty_Board += "Be The First Player To Win A Match And Take The Top Rank Here\n"
+        Empty_Board += "Start A New Game Lobby Now To Begin Your Journey To Become A Legend"
         return await update.message.reply_text(Empty_Board)
     
-    # Constructing The Professional Hall Of Fame Board
-    Board = "🏆 Presenting The Official Taboo Global Hall Of Fame Top Rankings 🏆\n\n"
-    Board += "Witness The Greatest Minds And Quickest Thinkers In Our Community Today\n\n"
+    # Constructing The Simple Hall Of Fame Board
+    Board = "🏆 The Official Taboo Global Hall Of Fame Top Rankings 🏆\n\n"
+    Board += "See The Smartest And Fastest Thinkers In Our Game Community Today\n\n"
     
     for Index, Player in enumerate(Ranks):
         Position = Index + 1
         Player_Name = Player[0]
         Player_Points = Player[1]
         
-        # Assigning Professional Medals For Top Three Positions
+        # Assigning Simple Rank Titles For Top Three Positions
         if Position == 1:
             Rank_Icon = "🥇 First Place"
         elif Position == 2:
@@ -684,80 +703,79 @@ async def Leaderboard_Handler(update: Update, context):
         else:
             Rank_Icon = "🏅 Position " + str(Position)
             
-        Board += Rank_Icon + " Participant Name " + Player_Name + " With Total Career Points " + str(Player_Points) + "\n"
+        Board += Rank_Icon + " Player Name " + Player_Name + " With Total Career Points " + str(Player_Points) + "\n"
     
-    Board += "\n📊 Global Ranking Summary And Competition Status\n"
-    Board += "The Battle For The Top Position Is Getting Extremely Intense This Season\n"
-    Board += "Do You Have The Intelligence And Speed To Surpass These Legendary Players\n"
-    Board += "Every Correct Guess Brings You Closer To The Prestigious Gold Medal Status\n\n"
+    Board += "\n📊 Global Ranking Summary And Match Status\n"
+    Board += "The Fight For The Top Rank Is Getting Very Hard This Season\n"
+    Board += "Do You Have The Speed To Beat These Great Players On The Board\n"
+    Board += "Every Correct Guess Helps You Get Closer To The Gold Medal Status\n\n"
     
-    Board += "✨ Keep Playing Regularly To Secure Your Legacy On This Famous Board ✨"
+    Board += "✨ Keep Playing Regularly To Save Your Name On This Famous Board ✨"
     
     await update.message.reply_text(Board)
 
 # Function To Show Current Lobby Members
 async def Members_Handler(update: Update, context):
     if not Lobby_Data["Players"]:
-        return await update.message.reply_text("🔍 System Alert The Lobby Is Currently Empty With No Active Participants")
+        return await update.message.reply_text("🔍 System Alert The Lobby Is Empty With No Players Right Now")
     
-    Member_List = "👥 Current Professional Gaming Lobby Participant Roster 👥\n\n"
+    Member_List = "👥 List Of Players Currently In The Game Lobby 👥\n\n"
     for P_Id in Lobby_Data["Players"]:
-        Member_List += "✨ Participant Name " + Lobby_Data["Player_Names"][P_Id] + "\n"
+        Member_List += "✨ Player Name " + Lobby_Data["Player_Names"][P_Id] + "\n"
     
-    Member_List += "\n📊 Total Count Of Players Currently Waiting In This Session " + str(len(Lobby_Data["Players"]))
+    Member_List += "\n📊 Total Number Of Players Waiting To Play " + str(len(Lobby_Data["Players"]))
     await update.message.reply_text(Member_List)
 
-# Function To Show Team Distribution
 async def Team_Handler(update: Update, context):
     if not Game_State["Is_Running"]:
-        return await update.message.reply_text("🚫 Error Teams Are Not Formed Until The Official Match Begins")
+        return await update.message.reply_text("🚫 Error Teams Are Not Formed Until The Match Starts")
     
-    Team_Msg = "⚔️ Official Team Distribution Roster For The Current Match ⚔️\n\n"
-    Team_Msg += "🟦 Roster Members Of Team Alpha\n"
-    for P_Id in Game_State["Team_A"]: Team_Msg += "✨ " + Lobby_Data["Player_Names"][P_Id] + "\n"
+    Team_Msg = "⚔️ Official Player List For Both Teams ⚔️\n\n"
+    Team_Msg += "🪷 Members Of Team BJP:\n"
+    for P_Id in Game_State["Team_Bjp"]: Team_Msg += "✨ " + Lobby_Data["Player_Names"][P_Id] + "\n"
     
-    Team_Msg += "\n🟥 Roster Members Of Team Bravo\n"
-    for P_Id in Game_State["Team_B"]: Team_Msg += "✨ " + Lobby_Data["Player_Names"][P_Id] + "\n"
+    Team_Msg += "\n🪬 Members Of Team Congress:\n"
+    for P_Id in Game_State["Team_Congress"]: Team_Msg += "✨ " + Lobby_Data["Player_Names"][P_Id] + "\n"
     
     await update.message.reply_text(Team_Msg)
 
-# Function To Provide A Visual Hint To The Group
 async def Hint_Handler(update: Update, context):
     if not Game_State["Round_Active"]:
-        return await update.message.reply_text("🚫 System Alert There Is No Active Secret Word To Provide A Hint For")
+        return await update.message.reply_text("🚫 System Alert There Is No Active Round To Give A Hint")
     
     Secret = Game_State["Current_Word"]
-    # Generates A Masked Hint Like A _ _ L E
+    # Generates A Simple Masked Hint
     Masked = Secret[0] + " " + " ".join(["_" for _ in range(len(Secret)-1)])
     
-    Hint_Msg = "💡 Official System Hint Generated For The Current Secret Word 💡\n\n"
-    Hint_Msg += "🔎 Word Structure Format " + Masked.upper() + "\n"
-    Hint_Msg += "📏 Total Number Of Characters In The Hidden Word " + str(len(Secret)) + "\n\n"
-    Hint_Msg += "📢 Everyone Please Use This Structural Information To Refine Your Guesses"
+    Hint_Msg = "💡 New System Hint For The Secret Word 💡\n\n"
+    Hint_Msg += "🔎 Word Starting Letter: " + Masked.upper() + "\n"
+    Hint_Msg += "📏 Total Number Of Letters In The Word: " + str(len(Secret)) + "\n\n"
+    Hint_Msg += "📢 Everyone Please Use This Hint To Guess The Word Correctly"
     await update.message.reply_text(Hint_Msg)
 
-# Function To Check Whose Turn It Is
 async def Turn_Handler(update: Update, context):
     if not Game_State["Is_Running"]:
-        return await update.message.reply_text("🔍 Match Status No Active Turn Recording Since The Game Has Not Started")
+        return await update.message.reply_text("🔍 Match Status The Game Has Not Started Yet")
     
-    Team_Name = "Team Alpha" if Game_State["Current_Turn_Team"] == "A" else "Team Bravo"
-    Turn_Report = "🔄 Official Turn Assignment Tracking Report 🔄\n\n"
-    Turn_Report += "🚩 Current Active Turn Belongs To " + Team_Name + "\n"
+    # Using Your New Team Names
+    Team_Name = "Team Bjp" if Game_State["Current_Turn_Team"] == "Bjp" else "Team Congress"
+    
+    Turn_Report = "🔄 Official Turn Details 🔄\n\n"
+    Turn_Report += "🚩 Current Turn Is For: " + Team_Name + "\n"
     
     if Game_State["Round_Active"]:
-        Turn_Report += "👤 Current Assigned Clue Giver " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + "\n"
-        Turn_Report += "🕒 Remaining Time Is Ticking Down In The Background Task\n"
+        Turn_Report += "👤 Current Clue Giver Is: " + Lobby_Data["Player_Names"][Game_State["Clue_Giver"]] + "\n"
+        Turn_Report += "🕒 The Clock Is Running Please Hurry Up\n"
     else:
-        Turn_Report += "🕒 Status Waiting For The Authorized Member To Type The Next Command\n"
+        Turn_Report += "🕒 Status Waiting For Someone To Type The Round Command\n"
     
     await update.message.reply_text(Turn_Report)
 
 async def Reset_Handler(update: Update, context):
-    # Accessing Global Variables To Perform A Complete System Wipe
+    # Accessing Global Variables To Clear All Data
     global Lobby_Data, Game_State
     
-    # Fully Resetting The Lobby Information To Factory Default
+    # Fully Resetting The Lobby Information To Empty State
     Lobby_Data.update({
         "Is_Open": False, 
         "Creator_Id": None, 
@@ -765,146 +783,146 @@ async def Reset_Handler(update: Update, context):
         "Player_Names": {}
     })
     
-    # Fully Resetting The Game State Information To Default Values
+    # Fully Resetting The Game State For Bjp And Congress Teams
     Game_State.update({
         "Is_Running": False, 
-        "Team_A": [], 
-        "Team_B": [], 
-        "Scores": {"A": 0, "B": 0},
-        "Current_Turn_Team": "A", 
+        "Team_Bjp": [], 
+        "Team_Congress": [], 
+        "Scores": {"Bjp": 0, "Congress": 0},
+        "Current_Turn_Team": "Bjp", 
         "Current_Word": None, 
         "Taboo_Words": [], 
         "Clue_Giver": None, 
         "Round_Active": False
     })
     
-    # Constructing The Professional System Reset Announcement
-    Reset_Msg = "🔄 The Professional Taboo Game Engine Has Been Successfully Reset 🔄\n\n"
+    # Simple Reset Announcement Message
+    Reset_Msg = "🔄 The Taboo Game System Has Been Successfully Reset 🔄\n\n"
     
-    Reset_Msg += "🧹 All Current Session Data And Match Records Have Been Wiped Clean\n"
-    Reset_Msg += "🛡️ The System Memory Is Now Initialized To Factory Default Settings\n"
-    Reset_Msg += "👤 Any Active Lobby Or Round Progress Has Been Permanently Terminated\n\n"
+    Reset_Msg += "🧹 All Current Game Data And Match Scores Have Been Deleted\n"
+    Reset_Msg += "🛡️ The System Memory Is Now Clean And Back To Normal Settings\n"
+    Reset_Msg += "👤 Any Active Lobby Or Round Has Been Stopped Right Now\n\n"
     
-    Reset_Msg += "📝 Important Instructions For Starting A New Gaming Session\n"
-    Reset_Msg += "You Are Now Authorized To Create A Brand New Lobby Using The Lobby Command\n"
-    Reset_Msg += "Ensure All Players Are Ready To Rejoin Before You Initialize The Teams Again\n"
-    Reset_Msg += "The Scores Of The Previous Session Are Not Saved In Temporary Memory\n\n"
+    Reset_Msg += "📝 How To Start A New Game Again\n"
+    Reset_Msg += "You Can Now Create A New Game Room Using The Lobby Command\n"
+    Reset_Msg += "Make Sure All Your Friends Are Ready To Join The Teams Again\n"
+    Reset_Msg += "Old Scores From The Last Game Are Now Removed From The System\n\n"
     
-    Reset_Msg += "🌟 Thank You For Using Our Automated Gaming Management System 🌟"
+    Reset_Msg += "🌟 Thank You For Using Our Gaming Management System 🌟"
     
     await update.message.reply_text(Reset_Msg)
 
 async def Status_Handler(update: Update, context):
     # Verification Check If The Game Is Actually Active
     if not Game_State["Is_Running"]: 
-        No_Game = "🔍 Information No Active Taboo Game Match Is Currently In Progress\n\n"
-        No_Game += "There Are No Scores To Display Because The Game Engine Is Idle\n"
-        No_Game += "Please Use The Lobby Command To Create A New Session First\n"
-        No_Game += "Once The Match Starts You Can Use Status To Track Your Progress"
+        No_Game = "🔍 Info There Is No Active Taboo Match Going On Right Now\n\n"
+        No_Game += "There Are No Scores To Show Because The Game Has Not Started\n"
+        No_Game += "Please Use The Lobby Command To Create A New Game First\n"
+        No_Game += "Once The Match Begins You Can Use Status To Track Your Score"
         return await update.message.reply_text(No_Game)
     
-    # Constructing The Grand Status Report Header
-    Status_Report = "📊 Presenting The Current Detailed Match Status Professional Report 📊\n\n"
+    # Constructing The Simple Status Report Header
+    Status_Report = "📊 The Current Live Match Score And Status Report 📊\n\n"
     
-    # Score Display Section
-    Score_A = Game_State["Scores"]["A"]
-    Score_B = Game_State["Scores"]["B"]
+    # Score Display For Bjp And Congress
+    Score_Bjp = Game_State["Scores"]["Bjp"]
+    Score_Congress = Game_State["Scores"]["Congress"]
     
-    Status_Report += "🟦 Team Alpha Current Performance Score " + str(Score_A) + " Points\n"
-    Status_Report += "🟥 Team Bravo Current Performance Score " + str(Score_B) + " Points\n\n"
+    Status_Report += "🟦 Team BJP Current Total Score: " + str(Score_Bjp) + " Points\n"
+    Status_Report += "🟥 Team Congress Current Total Score: " + str(Score_Congress) + " Points\n\n"
     
-    # Advanced Leadership Analysis Logic
-    Status_Report += "🏆 Current Match Leadership Status Analysis\n"
-    if Score_A > Score_B:
-        Difference = Score_A - Score_B
-        Status_Report += "Dominating Team Team Alpha Is Leading By " + str(Difference) + " Points\n"
-    elif Score_B > Score_A:
-        Difference = Score_B - Score_A
-        Status_Report += "Dominating Team Team Bravo Is Leading By " + str(Difference) + " Points\n"
+    # Simple Leadership Status
+    Status_Report += "🏆 Who Is Winning Right Now\n"
+    if Score_Bjp > Score_Congress:
+        Difference = Score_Bjp - Score_Congress
+        Status_Report += "Current Leader Team Bjp Is Leading By " + str(Difference) + " Points\n"
+    elif Score_Congress > Score_Bjp:
+        Difference = Score_Congress - Score_Bjp
+        Status_Report += "Current Leader Team Congress Is Leading By " + str(Difference) + " Points\n"
     else:
-        Status_Report += "Competitive Status Both Teams Are Currently Standing On Equal Scores\n"
+        Status_Report += "Match Status Both Teams Currently Have The Same Score\n"
         
-    # Current Turn And Round Dynamics
-    Status_Report += "\n🎮 Current Active Turn Details\n"
-    Current_Team_Name = "Team Alpha" if Game_State["Current_Turn_Team"] == "A" else "Team Bravo"
-    Status_Report += "Currently Playing Right Now " + Current_Team_Name + "\n"
+    # Current Turn And Round Details
+    Status_Report += "\n🎮 Current Turn Details\n"
+    Current_Team_Name = "Team Bjp" if Game_State["Current_Turn_Team"] == "Bjp" else "Team Congress"
+    Status_Report += "Playing Right Now " + Current_Team_Name + "\n"
     
     if Game_State["Round_Active"]:
-        Clue_Giver_Name = Lobby_Data["Player_Names"].get(Game_State["Clue_Giver"], "Unknown Participant")
-        Status_Report += "Round Status Active Word Guessing Is Currently Ongoing\n"
-        Status_Report += "Designated Clue Giver " + Clue_Giver_Name + "\n"
-        Status_Report += "Timer Status The Clock Is Ticking Towards The Final Seconds\n"
+        Clue_Giver_Name = Lobby_Data["Player_Names"].get(Game_State["Clue_Giver"], "Unknown Player")
+        Status_Report += "Round Status The Word Guessing Is Going On Right Now\n"
+        Status_Report += "Clue Giver Name: " + Clue_Giver_Name + "\n"
+        Status_Report += "Timer Status The Clock Is Running Down Very Fast\n"
     else:
-        Status_Report += "Round Status Waiting For The Next Secret Word Initialization\n"
-        Status_Report += "Instruction Please Type The Next Command To Start The Following Round\n"
+        Status_Report += "Round Status Waiting For The Next Secret Word To Start\n"
+        Status_Report += "Instruction Please Type The Round Command To Start The Next Turn\n"
     
-    Status_Report += "\n✨ Keep Playing And Perform Better To Secure Your Ultimate Victory ✨"
+    Status_Report += "\n✨ Keep Playing Well To Lead Your Team To Victory ✨"
     
     await update.message.reply_text(Status_Report)
 
 async def Guide_Handler(update: Update, context):
-    Guide_Text = "📖 Professional Taboo Gaming Guide For Beginners And New Players 📖\n\n"
+    Guide_Text = "📖 Official Taboo Game Guide For New Players 📖\n\n"
     
-    Guide_Text += "Agar Aap Is Game Mein Naye Hain Toh Yeh Guide Aapko Master Bana Degi\n\n"
+    Guide_Text += "If You Are New To This Game This Guide Will Help You Become A Pro\n\n"
     
-    Guide_Text += "📍 Step 1 Game Kaise Join Karein\n"
-    Guide_Text += "Sabse Pehle Bot Ke Username Par Click Karke Use Private Mein Start Button Dabayein\n"
-    Guide_Text += "Uske Baad Group Mein Aakar Join Likhein Taaki Aap Match Ka Hissa Ban Sakein\n"
-    Guide_Text += "Jab Tak Teams Barabar Nahi Hongi Tab Tak Game Shuru Nahi Hoga Isliye Doston Ko Bulayein\n\n"
+    Guide_Text += "📍 Step 1 How To Join The Game\n"
+    Guide_Text += "First Click On The Bot Name And Press The Start Button In Private DM\n"
+    Guide_Text += "Then Come Back To The Group And Type Join To Enter The Match\n"
+    Guide_Text += "The Game Starts Only When Teams Are Balanced So Invite Your Friends\n\n"
     
-    Guide_Text += "📍 Step 2 Clue Giver Ka Kaam Kya Hai\n"
-    Guide_Text += "Har Round Mein Ek Player Ko Word Batane Wala Matlab Clue Giver Banaya Jayega\n"
-    Guide_Text += "Bot Aapko Private Message Mein Ek Secret Word Aur Panch Mana Kiye Gaye Words Bhejega\n"
-    Guide_Text += "Aapko Woh Secret Word Apni Team Ko Samjhana Hai Lekin Woh Panch Words Use Nahi Karne Hain\n"
-    Guide_Text += "Hint Dene Ke Liye Bot Ke DM Mein Clue Aur Apna Message Likhein Jaise Clue Yeh Peela Phal Hai\n\n"
+    Guide_Text += "📍 Step 2 Role Of The Clue Giver\n"
+    Guide_Text += "In Every Round One Player Will Be Chosen As The Clue Giver\n"
+    Guide_Text += "The Bot Will Send You A Secret Word And Five Forbidden Words In Private\n"
+    Guide_Text += "You Must Explain The Secret Word Without Using Any Of Those Forbidden Words\n"
+    Guide_Text += "To Give A Hint Type Clue Followed By Your Message In Bot DM Like Clue It Is Yellow\n\n"
     
-    Guide_Text += "📍 Step 3 Guess Kaise Karna Hai\n"
-    Guide_Text += "Baaki Saare Players Ko Group Chat Mein Sirf Woh Word Type Karna Hai Jo Unhe Lagta Hai Sahi Hai\n"
-    Guide_Text += "Aapko Koi Command Use Nahi Karni Hai Bas Direct Word Likhein Jaise Mango Ya Apple\n"
-    Guide_Text += "Jo Sabse Pehle Sahi Word Likhega Uski Team Ko Das Points Mil Jayenge\n\n"
+    Guide_Text += "📍 Step 3 How To Guess The Word\n"
+    Guide_Text += "Other Players Must Type The Answer Directly In The Group Chat\n"
+    Guide_Text += "You Do Not Need Any Command To Guess Just Type The Word Like Mango Or Apple\n"
+    Guide_Text += "The First Person To Guess Correctly Wins Ten Points For Their Team\n\n"
     
-    Guide_Text += "📍 Step 4 Galatiyon Se Kaise Bachein\n"
-    Guide_Text += "Clue Giver Ko Kabhi Bhi Group Chat Mein Hint Nahi Likhna Hai Hamesha Bot Ke DM Mein Likhein\n"
-    Guide_Text += "Agar Clue Giver Ne Mana Kiye Gaye Words Bole Toh Round Turant Khatam Ho Jayega\n"
-    Guide_Text += "Hamesha Timer Par Nazar Rakhein Kyunki Do Minute Baad Round Apne Aap Band Ho Jayega\n\n"
+    Guide_Text += "📍 Step 4 How To Avoid Penalties\n"
+    Guide_Text += "The Clue Giver Should Never Type Hints Directly In The Group Chat\n"
+    Guide_Text += "If The Clue Giver Uses A Forbidden Word The Round Will End Immediately\n"
+    Guide_Text += "Always Watch The Timer Because The Round Ends Automatically After Five Minutes\n\n"
     
-    Guide_Text += "📍 Example Uddahran Ke Liye\n"
-    Guide_Text += "Secret Word Samosa Hai Aur Taboo Word Aloo Hai\n"
-    Guide_Text += "Aap DM Mein Likhenge Clue Yeh Ek Tikona Nashta Hai Jo Fry Hota Hai\n"
-    Guide_Text += "Aap Aloo Word Use Nahi Kar Sakte Warna Penalty Lag Jayegi\n\n"
+    Guide_Text += "📍 Simple Example For You\n"
+    Guide_Text += "If The Secret Word Is Samosa And The Forbidden Word Is Potato\n"
+    Guide_Text += "You Can Type Clue It Is A Fried Indian Snack In Triangle Shape\n"
+    Guide_Text += "You Cannot Use The Word Potato Or You Will Get A Penalty\n\n"
     
-    Guide_Text += "🌟 Bas Itna Hi Hai Ab Khelna Shuru Karein Aur Points Jeetein 🌟"
+    Guide_Text += "🌟 That Is All You Need To Know Now Start Playing And Have Fun 🌟"
     
     await update.message.reply_text(Guide_Text)
 
 async def Rules_Handler(update: Update, context):
-    Summary = "🎮 Welcome To The Ultimate Professional Taboo Game Comprehensive Guide 🎮\n\n"
+    Summary = "🎮 Welcome To The Official Taboo Game Rules Guide 🎮\n\n"
     
-    Summary += "This Game Is A Thrilling Battle Of Words Intelligence And Quick Thinking Between Two Competitive Teams\n\n"
+    Summary += "This Game Is A Fun Battle Of Words And Quick Thinking Between Team Bjp And Team Congress\n\n"
     
-    Summary += "📍 Phase One Creating The Lobby And Forming Teams\n"
-    Summary += "First One Player Must Create A Lobby Using The Lobby Command Inside The Group Chat\n"
-    Summary += "Other Interested Participants Must Join The Session By Using The Join Command To Register Themselves\n"
-    Summary += "The Host Will Start The Match Once Teams Are Balanced Equally Into Team Alpha And Team Bravo\n\n"
+    Summary += "📍 Phase One Creating The Lobby And Making Teams\n"
+    Summary += "One Player Must Create A Lobby Using The Lobby Command Inside The Group Chat\n"
+    Summary += "Other Players Must Join The Game By Using The Join Command To Register Themselves\n"
+    Summary += "The Host Will Start The Match Once Players Are Divided Into Team Bjp And Team Congress\n\n"
     
-    Summary += "📍 Phase Two The Secret Word And Clue Submission\n"
-    Summary += "Every Round One Player Is Nominated As The Official Clue Giver For Their Respective Team\n"
-    Summary += "The Bot Will Send A Secret Word Along With Five Restricted Taboo Words To Their Private DM\n"
-    Summary += "The Clue Giver Must Describe The Secret Word Without Using Any Of Those Forbidden Taboo Words\n"
-    Summary += "Important Note Clues Must Be Submitted Only In The Bot Private DM Using The Clue Command\n\n"
+    Summary += "📍 Phase Two The Secret Word And Giving Hints\n"
+    Summary += "In Every Round One Player Will Be Chosen As The Clue Giver For Their Team\n"
+    Summary += "The Bot Will Send A Secret Word And Five Forbidden Taboo Words To Your Private DM\n"
+    Summary += "The Clue Giver Must Explain The Word Without Using Any Of Those Forbidden Words\n"
+    Summary += "Important Note Hints Must Be Sent Only In The Bot Private DM Using The Clue Command\n\n"
     
-    Summary += "📍 Phase Three Guessing And Scoring Points\n"
-    Summary += "Once The Clue Is Forwarded To The Group Chat All Other Members Must Start Guessing The Word\n"
-    Summary += "Participants Should Type Their Guesses Directly Into The Group Chat Without Using Any Commands\n"
-    Summary += "The First Person To Type The Correct Secret Word Wins Ten Points For Their Team Immediately\n"
-    Summary += "If The Clue Giver Accidentally Mentions A Taboo Word The Turn Ends And No Points Are Awarded\n\n"
+    Summary += "📍 Phase Three Guessing And Winning Points\n"
+    Summary += "Once The Hint Is Sent To The Group All Other Members Must Start Guessing The Word\n"
+    Summary += "Players Should Type Their Guesses Directly In The Group Without Using Any Commands\n"
+    Summary += "The First Person To Type The Correct Word Wins Ten Points For Their Team Right Away\n"
+    Summary += "If The Clue Giver Uses A Forbidden Word The Turn Ends And No Points Are Given\n\n"
     
-    Summary += "📍 Phase Four The Professional Timer And Victory\n"
-    Summary += "Each Round Features A One Hundred Twenty Second Professional Timer With Multiple Warning Alerts\n"
-    Summary += "If No One Guesses The Correct Word Within The Time Limit The Round Ends And The Turn Shifts\n"
-    Summary += "Players Can Track Their Performance Records Using The Profile And Global Leaderboard Commands\n\n"
+    Summary += "📍 Phase Four The Game Timer And Winning\n"
+    Summary += "Each Round Has A Five Minute Timer With Multiple Time Alerts In The Group\n"
+    Summary += "If No One Guesses The Correct Word In Time The Round Ends And The Turn Changes\n"
+    Summary += "Players Can Check Their Records Using The Profile And Global Leaderboard Commands\n\n"
     
-    Summary += "🌟 Follow These Professional Rules To Maintain Fair Competition And Become A Grand Champion 🌟"
+    Summary += "🌟 Follow These Simple Rules To Play Fair And Become A Grand Champion 🌟"
     
     await update.message.reply_text(Summary)
 
@@ -914,19 +932,19 @@ async def Cancel_Handler(update: Update, context):
 
     # Now We Can Safely Check If There Is Actually Anything To Cancel
     if not Lobby_Data["Is_Open"] and not Game_State["Is_Running"]:
-        Empty_Error = "❌ Operation Denied There Is No Active Lobby Or Match To Cancel ❌\n\n"
-        Empty_Error += "The Gaming Engine Is Already In An Idle State Currently\n"
-        Empty_Error += "You Can Create A New Session By Using The Lobby Command Anytime\n"
-        Empty_Error += "No Resources Are Currently Being Used By The System Memory"
+        Empty_Error = "❌ Error There Is No Active Lobby Or Match To Cancel ❌\n\n"
+        Empty_Error += "The Game System Is Already Stopped Right Now\n"
+        Empty_Error += "You Can Create A New Game By Using The Lobby Command Anytime\n"
+        Empty_Error += "No Game Data Is Currently Being Used In The System Memory"
         return await update.message.reply_text(Empty_Error)
 
-    # Security Check Only The Creator Or An Admin Can Cancel
+    # Security Check Only The Host Can Cancel
     User_Id = update.message.from_user.id
     if User_Id != Lobby_Data["Creator_Id"]:
-        No_Auth = "🚫 Access Restricted Only The Official Host Can Cancel This Match 🚫\n\n"
-        No_Auth += "Participant Name " + update.message.from_user.first_name + " Is Not Authorized\n"
-        No_Auth += "Please Request The Lobby Creator To Terminate The Session Properly\n"
-        No_Auth += "This Protocol Prevents Unauthorized Termination Of Active Gaming Rounds"
+        No_Auth = "🚫 Access Denied Only The Host Can Cancel This Match 🚫\n\n"
+        No_Auth += "Player Name " + update.message.from_user.first_name + " Does Not Have Permission\n"
+        No_Auth += "Please Ask The Lobby Creator To Stop The Game Properly\n"
+        No_Auth += "This Rule Prevents Other Players From Stopping Your Active Game"
         return await update.message.reply_text(No_Auth)
 
     # Performing The Full System Reset For Cancellation
@@ -935,21 +953,21 @@ async def Cancel_Handler(update: Update, context):
         "Is_Running": False, 
         "Round_Active": False, 
         "Current_Word": None, 
-        "Team_A": [], 
-        "Team_B": [], 
-        "Scores": {"A": 0, "B": 0}
+        "Team_Bjp": [], 
+        "Team_Congress": [], 
+        "Scores": {"Bjp": 0, "Congress": 0}
     })
     
-    Termination_Msg = "🛑 Official Match Cancellation Notice Successfully Processed 🛑\n\n"
-    Termination_Msg += "The Current Gaming Session Has Been Terminated By The Authorized Host\n"
-    Termination_Msg += "All Active Rounds Scores And Team Formations Have Been Wiped Clean\n"
-    Termination_Msg += "The Bot Memory Is Now Initialized Back To The Standard Default State\n\n"
+    Termination_Msg = "🛑 Official Match Cancellation Notice 🛑\n\n"
+    Termination_Msg += "The Current Game Session Has Been Stopped By The Host\n"
+    Termination_Msg += "All Active Rounds Scores And Teams Have Been Deleted\n"
+    Termination_Msg += "The Bot Memory Is Now Back To Normal Settings Again\n\n"
     
-    Termination_Msg += "📝 Management Information For All Participants Below\n"
-    Termination_Msg += "You Are Now Free To Initiate A Brand New Match Session Using Lobby Command\n"
-    Termination_Msg += "We Hope To See You Back In The Competitive Arena Very Soon Indeed\n\n"
+    Termination_Msg += "📝 Information For All Players Below\n"
+    Termination_Msg += "You Are Now Free To Start A New Game Using The Lobby Command\n"
+    Termination_Msg += "We Hope To See You Back In The Game Very Soon\n\n"
     
-    Termination_Msg += "🌟 Thank You For Utilizing Our Professional Taboo Management Services 🌟"
+    Termination_Msg += "🌟 Thank You For Using Our Taboo Game Management System 🌟"
     
     await update.message.reply_text(Termination_Msg)
 
