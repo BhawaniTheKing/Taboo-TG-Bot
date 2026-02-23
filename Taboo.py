@@ -267,38 +267,39 @@ async def Manage_Round_Timer(chat_id, context, round_word):
 
 # Command Handlers
 async def Help_Handler(update: Update, context):
-    Guide = "🌟 Welcome To The Professional Taboo Gaming Bot Help Menu 🌟\n\n"
+    Guide = "🌟 Welcome To The Official Taboo Master Professional Help Command Center 🌟\n\n"
     
-    Guide += "Explore The Available Commands Below To Manage Your Gaming Session Efficiently\n\n"
+    Guide += "Explore The Complete Command Directory Below To Master Your Gaming Session\n\n"
     
-    Guide += "1️⃣ /Lobby Use This Command To Create A New Private Gaming Room For Your Friends\n"
-    Guide += "Setting Up A Lobby Is The First Step To Start Your Thrilling Match Journey\n\n"
+    Guide += "📍 Primary Lobby And Session Management\n\n"
     
-    Guide += "2️⃣ /Join Type This Command To Enter Into An Already Created And Active Lobby\n"
-    Guide += "Make Sure You Join Before The Host Starts The Official Match Countdown\n\n"
+    Guide += "1️⃣ /Lobby Create A New Official Gaming Room To Host Your Friends For A Match\n"
+    Guide += "2️⃣ /Join Register Yourself Into The Active Lobby To Participate In The Battle\n"
+    Guide += "3️⃣ /Start Initialize The Match Process Once Teams Are Balanced And Ready\n"
+    Guide += "4️⃣ /Members View The Complete List Of Participants Currently Inside The Lobby\n"
+    Guide += "5️⃣ /Cancel Terminate The Current Active Session And Wipe All Temporary Data\n"
+    Guide += "6️⃣ /Reset Fully Reinitialize The Game Engine Back To Factory Default Settings\n\n"
     
-    Guide += "3️⃣ /Start This Command Allows The Creator To Begin The Match Once Teams Are Balanced\n"
-    Guide += "Once Activated The Bot Will Randomly Assign Everyone Into Two Competitive Teams\n\n"
+    Guide += "📍 Active Match Gameplay Commands\n\n"
     
-    Guide += "4️⃣ /Next Fetch Your Brand New Secret Word Directly Inside Your Private Chat Inbox\n"
-    Guide += "Only The Current Clue Giver Should Use This Command To Receive The Hidden Word\n\n"
+    Guide += "7️⃣ /Next Fetch The Next Secret Word Directly Inside Your Private Messaging Inbox\n"
+    Guide += "8️⃣ /Clue Clue Givers Must Use This Command In Private DM To Forward Hints To Group\n"
+    Guide += "9️⃣ /Hint Generate A Structural Clue Showing The First Letter And Word Length\n"
+    Guide += "🔟 /Turn Check Which Team Is Currently Playing And Who Is The Designated Clue Giver\n"
+    Guide += "🔢 /Team View The Official Player Distribution Roster For Team Alpha And Bravo\n"
+    Guide += "📊 /Status View The Real Time Match Scoreboard And Leadership Analysis Report\n\n"
     
-    Guide += "5️⃣ /Clue Clue Givers Must Use This Command In The Bot Private DM To Send Hints\n"
-    Guide += "Your Provided Hint Will Be Safely Forwarded To The Main Group Chat Automatically\n\n"
+    Guide += "📍 Career Performance And Statistics Tracking\n\n"
     
-    Guide += "6️⃣ /Status View The Real Time Scoreboard Details And Current Turn Information\n"
-    Guide += "Keep Track Of Which Team Is Leading And Who Needs To Perform Better Now\n\n"
+    Guide += "👤 /Profile Access Your Personal Gaming Record Career Points And Win Rate Status\n"
+    Guide += "🏆 /Leaderboard Witness The Global Hall Of Fame Ranking Of The Top Ten Legends\n\n"
     
-    Guide += "7️⃣ /Profile Check Your Personal Statistics Including Career Points And Total Wins\n"
-    Guide += "Analyze Your Performance Records To Become The Ultimate Taboo Champion\n\n"
+    Guide += "📝 Official Important Note For All Participants\n"
+    Guide += "All Clue Givers Must Ensure They Have Started The Bot In Private DM To Receive Words\n"
+    Guide += "Submit Your Hints Using The Clue Command Within The Bot DM To Avoid Penalties\n"
+    Guide += "The First Correct Guess In The Group Chat Without Any Command Wins Ten Points\n\n"
     
-    Guide += "8️⃣ /Leaderboard See The Global Ranking Of The Top Five Greatest Players Worldwide\n"
-    Guide += "Compete With Others To Secure Your Prestigious Rank On This Famous Board\n\n"
-    
-    Guide += "9️⃣ /Reset Use This To Terminate The Current Session And Clear All Global Data\n"
-    Guide += "This Command Is Useful If You Want To Restart The Match From The Very Beginning\n\n"
-    
-    Guide += "🎮 Enjoy Your Gaming Experience And Play Fairly To Climb Up The Ranks 🎮"
+    Guide += "🔥 Use These Commands Strategically To Dominate The Taboo Arena Today 🔥"
     
     await update.message.reply_text(Guide)
 
