@@ -445,7 +445,7 @@ async def Reset_Game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def Main():
     Token = "8380924465:AAFwbA-55qfkrA0-QJ_AL2uWuuS3Pt7y-Mw"
     
-    App = ApplicationBuilder().token(TOKEN).connect_timeout(40).read_timeout(40).write_timeout(40).pool_timeout(40).build()
+    App = ApplicationBuilder().token(Token).connect_timeout(40).read_timeout(40).write_timeout(40).pool_timeout(40).build()
     
     App.add_handler(CommandHandler("Category", Set_Category))
     App.add_handler(CallbackQueryHandler(Handle_Category_Selection, pattern="^Cat_"))
